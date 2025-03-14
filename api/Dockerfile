@@ -1,15 +1,21 @@
-FROM node:20-alpine
+FROM node:latest
 
 WORKDIR /usr/src/app
 
+# Copy package files
 COPY package*.json ./
 
+# Install dependencies
 RUN npm install
 
+# Copy application files
 COPY . .
 
+# Build the application
 RUN npm run build
 
+# Expose port 3000
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
+# Start the application
+CMD ["npm", "run", "start:dev"]
