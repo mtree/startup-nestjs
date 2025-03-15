@@ -1,0 +1,37 @@
+{
+    "locale": "pl",
+    "translations": {
+      "loginWelcomeTitle": "Witaj ponownie!",
+      "loginWelcomeSubtitle": "Zaloguj się, aby kontynuować",
+      "emailLabel": "Adres e-mail",
+      "emailPlaceholder": "Adres e-mail",
+      "emailRequired": "Wymagany jest adres e-mail",
+      "emailInvalid": "Proszę wprowadzić prawidłowy adres e-mail",
+      "passwordLabel": "Hasło",
+      "passwordPlaceholder": "Wprowadź swoje hasło",
+      "passwordRequired": "Hasło jest wymagane",
+      "passwordMinLength": "Hasło musi mieć co najmniej 6 znaków",
+      "forgotPassword": "Zapomniałeś hasła?",
+      "signInButton": "Zaloguj się",
+      "orDivider": "LUB",
+      "noAccountText": "Nie masz konta?",
+      "createAccountLink": "Załóż je teraz",
+      "registerTitle": "Utwórz konto",
+      "registerSubtitle": "Dołącz do nas i zacznij",
+      "firstNameLabel": "Imię",
+      "firstNamePlaceholder": "Wprowadź swoje imię",
+      "firstNameRequired": "Imię jest wymagane",
+      "lastNameLabel": "Nazwisko",
+      "lastNamePlaceholder": "Wprowadź swoje nazwisko",
+      "lastNameRequired": "Nazwisko jest wymagane",
+      "createPasswordPlaceholder": "Utwórz hasło",
+      "confirmPasswordLabel": "Potwierdź hasło",
+      "confirmPasswordPlaceholder": "Potwierdź swoje hasło",
+      "confirmPasswordRequired": "Potwierdzenie hasła jest wymagane",
+      "passwordMismatch": "Hasła nie pasują do siebie",
+      "createAccountButton": "Utwórz konto",
+      "haveAccountText": "Masz już konto?",
+      "signInLink": "Zaloguj się"
+    }
+  }
+  

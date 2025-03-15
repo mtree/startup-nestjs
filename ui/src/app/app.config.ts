@@ -1,8 +1,7 @@
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
-
-import { provideRouter } from '@angular/router';
+import { ApplicationConfig, importProvidersFrom, LOCALE_ID } from '@angular/core';
+import { provideRouter, withHashLocation } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
-
+import { provideClientHydration } from '@angular/platform-browser';
 import { routes } from './app.routes';
 import { ApiInterceptor } from './core/interceptors/api.interceptor';
 import { ApiModule, Configuration } from '../lib/api-client';
@@ -31,8 +30,13 @@ export const appConfig: ApplicationConfig = {
       provide: Configuration,
       useFactory: apiConfigFactory
     },
+    {
+      provide: LOCALE_ID,
+      useValue: 'pl'
+    },
     importProvidersFrom(
       ApiModule.forRoot(apiConfigFactory)
-    )
+    ),
+    provideClientHydration()
   ]
 };

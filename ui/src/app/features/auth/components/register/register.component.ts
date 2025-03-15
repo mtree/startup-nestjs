@@ -18,8 +18,8 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
     <div class="auth-container">
       <div class="auth-card">
         <div class="auth-header">
-          <h1>Create Account</h1>
-          <p>Join us today and get started</p>
+          <h1 i18n="@@registerTitle">Create Account</h1>
+          <p i18n="@@registerSubtitle">Join us today and get started</p>
         </div>
 
         <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
@@ -28,13 +28,14 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
           </div>
 
           <div class="form-group">
-            <label for="firstName">First Name</label>
+            <label for="firstName" i18n="@@firstNameLabel">First Name</label>
             <div class="input-container">
               <span class="material-icons">person</span>
               <input 
                 id="firstName" 
                 type="text" 
                 formControlName="firstName" 
+                i18n-placeholder="@@firstNamePlaceholder"
                 placeholder="Enter your first name"
                 [class.invalid]="registerForm.get('firstName')?.touched && registerForm.get('firstName')?.invalid"
               />
@@ -43,18 +44,19 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
               class="error-text" 
               *ngIf="registerForm.get('firstName')?.touched && registerForm.get('firstName')?.invalid"
             >
-              <span *ngIf="registerForm.get('firstName')?.errors?.['required']">First name is required</span>
+              <span *ngIf="registerForm.get('firstName')?.errors?.['required']" i18n="@@firstNameRequired">First name is required</span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="lastName">Last Name</label>
+            <label for="lastName" i18n="@@lastNameLabel">Last Name</label>
             <div class="input-container">
               <span class="material-icons">person</span>
               <input 
                 id="lastName" 
                 type="text" 
                 formControlName="lastName" 
+                i18n-placeholder="@@lastNamePlaceholder"
                 placeholder="Enter your last name"
                 [class.invalid]="registerForm.get('lastName')?.touched && registerForm.get('lastName')?.invalid"
               />
@@ -63,18 +65,19 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
               class="error-text" 
               *ngIf="registerForm.get('lastName')?.touched && registerForm.get('lastName')?.invalid"
             >
-              <span *ngIf="registerForm.get('lastName')?.errors?.['required']">Last name is required</span>
+              <span *ngIf="registerForm.get('lastName')?.errors?.['required']" i18n="@@lastNameRequired">Last name is required</span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email" i18n="@@emailLabel">Email</label>
             <div class="input-container">
               <span class="material-icons">mail</span>
               <input 
                 id="email" 
                 type="email" 
                 formControlName="email" 
+                i18n-placeholder="@@emailPlaceholder"
                 placeholder="Email address"
                 [class.invalid]="registerForm.get('email')?.touched && registerForm.get('email')?.invalid"
               />
@@ -83,19 +86,20 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
               class="error-text" 
               *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid"
             >
-              <span *ngIf="registerForm.get('email')?.errors?.['required']">Email is required</span>
-              <span *ngIf="registerForm.get('email')?.errors?.['email']">Please enter a valid email address</span>
+              <span *ngIf="registerForm.get('email')?.errors?.['required']" i18n="@@emailRequired">Email is required</span>
+              <span *ngIf="registerForm.get('email')?.errors?.['email']" i18n="@@emailInvalid">Please enter a valid email address</span>
             </div>
           </div>
           
           <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password" i18n="@@passwordLabel">Password</label>
             <div class="input-container">
               <span class="material-icons">lock</span>
               <input 
                 id="password" 
                 [type]="showPassword ? 'text' : 'password'"
                 formControlName="password" 
+                i18n-placeholder="@@createPasswordPlaceholder"
                 placeholder="Create a password"
                 [class.invalid]="registerForm.get('password')?.touched && registerForm.get('password')?.invalid"
               />
@@ -110,19 +114,20 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
               class="error-text" 
               *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid"
             >
-              <span *ngIf="registerForm.get('password')?.errors?.['required']">Password is required</span>
-              <span *ngIf="registerForm.get('password')?.errors?.['minlength']">Password must be at least 6 characters</span>
+              <span *ngIf="registerForm.get('password')?.errors?.['required']" i18n="@@passwordRequired">Password is required</span>
+              <span *ngIf="registerForm.get('password')?.errors?.['minlength']" i18n="@@passwordMinLength">Password must be at least 6 characters</span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="confirmPassword">Confirm Password</label>
+            <label for="confirmPassword" i18n="@@confirmPasswordLabel">Confirm Password</label>
             <div class="input-container">
               <span class="material-icons">lock</span>
               <input 
                 id="confirmPassword" 
                 [type]="showConfirmPassword ? 'text' : 'password'"
                 formControlName="confirmPassword" 
+                i18n-placeholder="@@confirmPasswordPlaceholder"
                 placeholder="Confirm your password"
                 [class.invalid]="registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.invalid"
               />
@@ -137,8 +142,8 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
               class="error-text" 
               *ngIf="registerForm.get('confirmPassword')?.touched && registerForm.get('confirmPassword')?.invalid"
             >
-              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['required']">Password confirmation is required</span>
-              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['passwordMismatch']">Passwords do not match</span>
+              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['required']" i18n="@@confirmPasswordRequired">Password confirmation is required</span>
+              <span *ngIf="registerForm.get('confirmPassword')?.errors?.['passwordMismatch']" i18n="@@passwordMismatch">Passwords do not match</span>
             </div>
           </div>
 
@@ -147,17 +152,17 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
             class="submit-button"
             [disabled]="!registerForm.valid || isLoading"
           >
-            <span *ngIf="!isLoading">Create Account</span>
+            <span *ngIf="!isLoading" i18n="@@createAccountButton">Create Account</span>
             <span *ngIf="isLoading" class="loader"></span>
           </button>
 
           <div class="divider">
-            <span>OR</span>
+            <span i18n="@@orDivider">OR</span>
           </div>
 
           <div class="auth-footer">
-            <span>Already have an account?</span>
-            <a [routerLink]="['/auth/login']">Sign in</a>
+            <span i18n="@@haveAccountText">Already have an account?</span>
+            <a [routerLink]="['/auth/login']" i18n="@@signInLink">Sign in</a>
           </div>
         </form>
       </div>

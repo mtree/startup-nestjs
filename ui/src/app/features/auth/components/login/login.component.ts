@@ -17,8 +17,8 @@ import { AuthService } from '../../services/auth.service';
     <div class="auth-container">
       <div class="auth-card">
         <div class="auth-header">
-          <h1>Welcome Back!</h1>
-          <p>Sign in to continue to your account</p>
+          <h1 i18n="@@loginWelcomeTitle">Welcome Back!</h1>
+          <p i18n="@@loginWelcomeSubtitle">Sign in to continue to your account</p>
         </div>
 
         <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="auth-form">
@@ -27,13 +27,14 @@ import { AuthService } from '../../services/auth.service';
           </div>
 
           <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email" i18n="@@emailLabel">Email</label>
             <div class="input-container">
               <span class="material-icons">mail</span>
               <input 
                 id="email" 
                 type="email" 
                 formControlName="email" 
+                i18n-placeholder="@@emailPlaceholder"
                 placeholder="Email address"
                 [class.invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
               />
@@ -42,19 +43,20 @@ import { AuthService } from '../../services/auth.service';
               class="error-text" 
               *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
             >
-              <span *ngIf="loginForm.get('email')?.errors?.['required']">Email is required</span>
-              <span *ngIf="loginForm.get('email')?.errors?.['email']">Please enter a valid email address</span>
+              <span *ngIf="loginForm.get('email')?.errors?.['required']" i18n="@@emailRequired">Email is required</span>
+              <span *ngIf="loginForm.get('email')?.errors?.['email']" i18n="@@emailInvalid">Please enter a valid email address</span>
             </div>
           </div>
           
           <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password" i18n="@@passwordLabel">Password</label>
             <div class="input-container">
               <span class="material-icons">lock</span>
               <input 
                 id="password" 
                 [type]="showPassword ? 'text' : 'password'"
                 formControlName="password" 
+                i18n-placeholder="@@passwordPlaceholder"
                 placeholder="Enter your password"
                 [class.invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
               />
@@ -69,13 +71,13 @@ import { AuthService } from '../../services/auth.service';
               class="error-text" 
               *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
             >
-              <span *ngIf="loginForm.get('password')?.errors?.['required']">Password is required</span>
-              <span *ngIf="loginForm.get('password')?.errors?.['minlength']">Password must be at least 6 characters</span>
+              <span *ngIf="loginForm.get('password')?.errors?.['required']" i18n="@@passwordRequired">Password is required</span>
+              <span *ngIf="loginForm.get('password')?.errors?.['minlength']" i18n="@@passwordMinLength">Password must be at least 6 characters</span>
             </div>
           </div>
 
           <div class="forgot-password">
-            <a>Forgot password?</a>
+            <a i18n="@@forgotPassword">Forgot password?</a>
           </div>
 
           <button 
@@ -83,17 +85,17 @@ import { AuthService } from '../../services/auth.service';
             class="submit-button"
             [disabled]="!loginForm.valid || isLoading"
           >
-            <span *ngIf="!isLoading">Sign In</span>
+            <span *ngIf="!isLoading" i18n="@@signInButton">Sign In</span>
             <span *ngIf="isLoading" class="loader"></span>
           </button>
 
           <div class="divider">
-            <span>OR</span>
+            <span i18n="@@orDivider">OR</span>
           </div>
 
           <div class="auth-footer">
-            <span>Don't have an account?</span>
-            <a [routerLink]="['/auth/register']">Create one now</a>
+            <span i18n="@@noAccountText">Don't have an account?</span>
+            <a [routerLink]="['/auth/register']" i18n="@@createAccountLink">Create one now</a>
           </div>
         </form>
       </div>
