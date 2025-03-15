@@ -23,46 +23,32 @@ export class ApiInterceptor implements HttpInterceptor {
   ) {}
 
   private shouldApplyRetryStrategy(url: string): boolean {
-    // Only apply retry strategy to API calls
-    if (!url.includes(environment.apiUrl)) {
-      return false;
-    }
-    
-    // Remove the base URL if present to check against endpoint patterns
-    const urlWithoutBase = url.replace(environment.apiUrl, '');
-    return this.retryableEndpoints.some(endpoint => urlWithoutBase.includes(endpoint));
+    return this.retryableEndpoints.some(endpoint => url.includes(endpoint));
   }
 
   intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Only add base URL if it's not already a full URL and it's not a navigation request
-    const isApiRequest = !request.url.startsWith('http') && !request.url.startsWith('/');
-    
-    const apiReq = isApiRequest
-      ? request.clone({
-          url: `${environment.apiUrl}${request.url}`,
-          headers: request.headers.set('Content-Type', 'application/json')
-        })
-      : request.clone({
-          headers: request.headers.set('Content-Type', 'application/json')
-        });
-
-    // Only apply error handling to API requests
-    if (apiReq.url.includes(environment.apiUrl)) {
-      const handler = next.handle(apiReq).pipe(
-        catchError(error => this.errorService.handleError(error))
-      );
-
-      // Apply retry strategy to specific endpoints
-      if (this.shouldApplyRetryStrategy(apiReq.url)) {
-        return handler.pipe(
-          retryWhen(error => this.retryStrategy.getRetryStrategy()(error, apiReq))
-        );
-      }
-
-      return handler;
+    // Don't modify requests that are already using the full URL
+    if (request.url.startsWith('http')) {
+      return next.handle(request);
     }
 
-    // Pass through non-API requests without modification
-    return next.handle(apiReq);
+    // Add base URL and headers to all other requests
+    const apiReq = request.clone({
+      url: `${environment.apiUrl}${request.url}`,
+      headers: request.headers.set('Content-Type', 'application/json')
+    });
+
+    const handler = next.handle(apiReq).pipe(
+      catchError(error => this.errorService.handleError(error))
+    );
+
+    // Apply retry strategy to specific endpoints
+    if (this.shouldApplyRetryStrategy(apiReq.url)) {
+      return handler.pipe(
+        retryWhen(error => this.retryStrategy.getRetryStrategy()(error, apiReq))
+      );
+    }
+
+    return handler;
   }
 }

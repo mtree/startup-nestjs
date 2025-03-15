@@ -9,11 +9,11 @@ import { RetryConfig } from '../models/retry-config.model';
 export class RetryStrategyService {
   private defaultConfig: RetryConfig = {
     maxRetries: 2,
-    baseDelay: 300,
-    maxDelay: 2000,
-    scalingFactor: 1.5,
+    baseDelay: 1000,
+    maxDelay: 10000,
+    scalingFactor: 2,
     includedStatusCodes: [408, 429, 500, 502, 503, 504],
-    retryableRequests: ['GET', 'HEAD', 'OPTIONS', 'POST']
+    retryableRequests: ['GET', 'HEAD', 'OPTIONS']
   };
 
   shouldRetry(error: any, retryCount: number, request: HttpRequest<any>): boolean {
@@ -24,11 +24,6 @@ export class RetryStrategyService {
 
     // Don't retry if the request method isn't in our retryable list
     if (!this.defaultConfig.retryableRequests.includes(request.method)) {
-      return false;
-    }
-
-    // Don't retry on authentication failures
-    if (error.status === 401 || error.status === 403) {
       return false;
     }
 

@@ -1,10 +1,5 @@
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 
-// PrimeNG
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeng/themes/aura';
-
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 
@@ -23,12 +18,6 @@ export function apiConfigFactory(): Configuration {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideAnimationsAsync(),
-    providePrimeNG({
-      theme: {
-        preset: Aura
-      }
-    }),
     provideRouter(routes),
     provideHttpClient(
       withInterceptorsFromDi()
