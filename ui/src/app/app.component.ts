@@ -7,18 +7,13 @@ import { RouterOutlet } from '@angular/router';
   imports: [RouterOutlet],
   template: `
     <main>
-      <h1>Hello, {{title}}</h1>
       <router-outlet></router-outlet>
     </main>
   `,
   styles: [`
     main {
       width: 100%;
-      height: 100%;
-    }
-    h1 {
-      margin: 1rem;
-      font-size: 1.5rem;
+      min-height: 100vh;
     }
   `]
 })
