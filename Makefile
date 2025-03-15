@@ -1,7 +1,7 @@
 # Development commands
 .PHONY: docker-dev docker-dev-api docker-dev-ui local-dev local-dev-api local-dev-ui \
         install install-api install-ui test test-api test-ui \
-        lint lint-api lint-ui clean docker-clean
+        lint lint-api lint-ui clean docker-clean generate-api-client
 
 # ======================
 # Docker Development
@@ -28,12 +28,24 @@ local-dev: local-dev-api local-dev-ui
 local-dev-api: .env.local
 	cd api && DB_HOST=localhost npm run start:dev
 
-local-dev-ui:
+local-dev-ui: generate-api-client
 	cd ui && npm start
 
 # Start only postgres for local development
 local-postgres:
 	docker-compose up postgres
+
+# ======================
+# API Client Generation
+# ======================
+generate-api-client:
+	@echo "Generating API client..."
+	@if lsof -i:3000 > /dev/null; then \
+		cd ui && npm run generate-api-client; \
+	else \
+		echo "Error: API server must be running on port 3000 to generate client"; \
+		exit 1; \
+	fi
 
 # ======================
 # Installation
@@ -74,7 +86,8 @@ lint-ui:
 prod:
 	docker-compose -f docker-compose.prod.yml up -d
 
-prod-build:
+prod-build: generate-api-client
+	cd ui && npm run build
 	docker-compose -f docker-compose.prod.yml build
 
 prod-logs:
@@ -92,6 +105,7 @@ clean:
 	rm -rf api/node_modules
 	rm -rf ui/node_modules
 	rm -f .env.local
+	rm -rf ui/src/lib/api-client
 
 # ======================
 # Helper commands
@@ -117,6 +131,9 @@ help:
 	@echo "  make local-dev-ui      - Start UI locally"
 	@echo "  make local-postgres    - Start only postgres in Docker"
 	@echo ""
+	@echo "API Client:"
+	@echo "  make generate-api-client - Generate TypeScript API client from OpenAPI spec"
+	@echo ""
 	@echo "Installation:"
 	@echo "  make install          - Install all dependencies"
 	@echo "  make install-api      - Install API dependencies"
@@ -133,4 +150,4 @@ help:
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make docker-clean    - Remove Docker containers and volumes"
-	@echo "  make clean           - Remove node_modules"
+	@echo "  make clean           - Remove node_modules and generated files"
