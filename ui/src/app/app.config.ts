@@ -1,11 +1,13 @@
 import { ApplicationConfig, importProvidersFrom, LOCALE_ID } from '@angular/core';
-import { provideRouter, withHashLocation } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { provideClientHydration } from '@angular/platform-browser';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
 import { ApiInterceptor } from './core/interceptors/api.interceptor';
 import { ApiModule, Configuration } from '../lib/api-client';
 import { environment } from '../environments/environment';
+import { provideNativeDateAdapter } from '@angular/material/core';
 
 // API client configuration
 export function apiConfigFactory(): Configuration {
@@ -18,9 +20,11 @@ export function apiConfigFactory(): Configuration {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
+    provideAnimations(),
     provideHttpClient(
       withInterceptorsFromDi()
     ),
+    provideNativeDateAdapter(),
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ApiInterceptor,
