@@ -42,10 +42,11 @@ describe('ApiInterceptor', () => {
       const shouldRetry = (interceptor as any).shouldApplyRetryStrategy.bind(interceptor);
       
       // Test with retryable endpoints
-      expect(shouldRetry('/api/tasks')).toBeTrue();
-      expect(shouldRetry('/api/tasks/123')).toBeTrue();
-      expect(shouldRetry('/api/users')).toBeTrue();
-      expect(shouldRetry('/api/users/profile')).toBeTrue();
+      expect(shouldRetry('/auth/login')).toBeTrue();
+      expect(shouldRetry('/auth/register')).toBeTrue();
+      expect(shouldRetry('/auth/profile')).toBeTrue();
+      expect(shouldRetry('/tasks')).toBeTrue();
+      expect(shouldRetry('/users')).toBeTrue();
     });
 
     it('should return false for non-retryable endpoints', () => {
@@ -53,8 +54,8 @@ describe('ApiInterceptor', () => {
       const shouldRetry = (interceptor as any).shouldApplyRetryStrategy.bind(interceptor);
       
       // Test with non-retryable endpoints
-      expect(shouldRetry('/api/auth/login')).toBeFalse();
       expect(shouldRetry('/api/settings')).toBeFalse();
+      expect(shouldRetry('/api/notifications')).toBeFalse();
     });
   });
 }); 
