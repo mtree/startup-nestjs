@@ -1,5 +1,5 @@
 import { ApplicationConfig, importProvidersFrom, LOCALE_ID } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -19,7 +19,7 @@ export function apiConfigFactory(): Configuration {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     provideAnimations(),
     provideHttpClient(
       withInterceptorsFromDi()

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, map } from 'rxjs';
 import { AuthService as ApiAuthService } from '../../../../lib/api-client/api/auth.service';
 import { AuthResponseDto } from '../../../../lib/api-client/model/authResponseDto';
 import { LoginDto } from '../../../../lib/api-client/model/loginDto';
@@ -10,10 +10,20 @@ import { TokenStorageService } from './token-storage.service';
   providedIn: 'root'
 })
 export class AuthService {
+  /**
+   * Observable that emits the current authentication state
+   */
+  isAuthenticated$: Observable<boolean>;
+
   constructor(
     private apiAuthService: ApiAuthService,
     private tokenStorage: TokenStorageService
-  ) {}
+  ) {
+    // Create an observable from the token observable
+    this.isAuthenticated$ = this.tokenStorage.getTokenObservable().pipe(
+      map(token => !!token)
+    );
+  }
 
   login(credentials: LoginDto): Observable<AuthResponseDto> {
     return this.apiAuthService.authControllerLogin(credentials).pipe(

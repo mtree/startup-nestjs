@@ -1,22 +1,39 @@
 import { Routes } from '@angular/router';
+import { LayoutComponent } from './shared/components/layout/layout.component';
+import { isAuthenticatedGuard, isNotAuthenticatedGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'auth/login',
-    pathMatch: 'full'
+    component: LayoutComponent,
+    canActivate: [isAuthenticatedGuard],
+    children: [
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      },
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
+      }
+    ]
   },
   {
     path: 'auth',
-    loadChildren: () => import('@app/features/auth/auth.routes').then(m => m.AUTH_ROUTES)
-  },
-  {
-    path: 'dashboard',
-    loadComponent: () => import('@app/features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-    // Add auth guard later
+    canActivate: [isNotAuthenticatedGuard],
+    loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
   },
   {
     path: '**',
-    redirectTo: 'auth/login'
+    redirectTo: 'dashboard'
   }
 ];

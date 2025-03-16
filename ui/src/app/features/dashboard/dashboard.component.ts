@@ -23,29 +23,6 @@ import { MatMenuModule } from '@angular/material/menu';
   ],
   template: `
     <div class="dashboard-container">
-      <mat-toolbar color="primary" class="dashboard-toolbar">
-        <span>Dashboard</span>
-        <span class="toolbar-spacer"></span>
-        <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
-          <mat-icon>account_circle</mat-icon>
-        </button>
-        <mat-menu #userMenu="matMenu">
-          <button mat-menu-item>
-            <mat-icon>person</mat-icon>
-            <span>Profile</span>
-          </button>
-          <button mat-menu-item>
-            <mat-icon>settings</mat-icon>
-            <span>Settings</span>
-          </button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="logout()">
-            <mat-icon>exit_to_app</mat-icon>
-            <span>Logout</span>
-          </button>
-        </mat-menu>
-      </mat-toolbar>
-
       <div class="dashboard-content">
         <div class="dashboard-grid">
           <mat-card class="dashboard-card">
@@ -136,6 +113,11 @@ import { MatMenuModule } from '@angular/material/menu';
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+    }
+
     .dashboard-container {
       height: 100%;
       display: flex;
@@ -160,7 +142,7 @@ import { MatMenuModule } from '@angular/material/menu';
 
     .dashboard-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 500px), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
       gap: 24px;
       width: 100%;
     }

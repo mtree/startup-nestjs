@@ -121,15 +121,25 @@ import { RegisterDto } from '../../../../../lib/api-client/model/registerDto';
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      height: 100%;
+      width: 100%;
+      overflow-y: auto;
+    }
+
     .container {
       display: flex;
       justify-content: center;
-      align-items: center;
-      padding: 16px;
+      align-items: flex-start;
+      min-height: 100%;
+      padding: 24px 16px;
     }
+
     mat-card {
       max-width: 400px;
       width: 100%;
+      margin: 0 auto;
     }
     mat-card-header {
       margin-bottom: 16px;

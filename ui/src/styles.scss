@@ -1,8 +1,17 @@
 @use '@angular/material' as mat;
 @use './_theme-solarized' as my-theme;
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 html {
   color-scheme: light dark;
+  background-color: var(--mat-sys-background);
+  
   @include mat.theme((
     color: (
       primary: my-theme.$primary-palette,
@@ -11,6 +20,20 @@ html {
     typography: Roboto,
     density: 0,
   ));
+}
 
-  background-color: var(--mat-sys-background);
+/* Ensure proper scrolling behavior */
+* {
+  box-sizing: border-box;
+}
+
+/* Ensure content doesn't overflow its container */
+img, video, iframe {
+  max-width: 100%;
+}
+
+/* Ensure proper scrolling for content areas */
+.scrollable-content {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
