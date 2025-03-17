@@ -31,8 +31,13 @@ describe('AuthService', () => {
     const tokenStorageSpy = jasmine.createSpyObj('TokenStorageService', [
       'setToken',
       'clearTokens',
-      'isAuthenticated'
+      'isAuthenticated',
+      'getToken',
+      'getTokenObservable'
     ]);
+    
+    // Configure getTokenObservable to return an Observable
+    tokenStorageSpy.getTokenObservable.and.returnValue(of(null));
 
     const apiAuthSpy = jasmine.createSpyObj('ApiAuthService', {
       authControllerLogin: of(mockAuthResponse),

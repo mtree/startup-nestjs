@@ -1,14 +1,30 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { AppComponent } from './app.component';
+import { TokenStorageService } from './features/auth/services/token-storage.service';
+import { BehaviorSubject, of } from 'rxjs';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
+    const tokenStorageSpy = jasmine.createSpyObj('TokenStorageService', [
+      'getToken', 
+      'getTokenObservable', 
+      'isAuthenticated'
+    ]);
+    tokenStorageSpy.getToken.and.returnValue(null);
+    tokenStorageSpy.getTokenObservable.and.returnValue(of(null));
+    tokenStorageSpy.isAuthenticated.and.returnValue(false);
+
     await TestBed.configureTestingModule({
       imports: [
         RouterTestingModule,
+        HttpClientTestingModule,
         AppComponent
       ],
+      providers: [
+        { provide: TokenStorageService, useValue: tokenStorageSpy }
+      ]
     }).compileComponents();
   });
 
@@ -18,10 +34,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have the 'yeee' title`, () => {
+  it(`should have the correct title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('yeee');
+    expect(app.title).toEqual('Angular App');
   });
 
   it('should render router outlet', () => {

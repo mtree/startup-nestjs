@@ -8,11 +8,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   imports: [
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' },
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET') || 'your-secret-key',
+        signOptions: { expiresIn: '1h' },
       }),
+      inject: [ConfigService],
     }),
   ],
   providers: [NotificationsGateway, NotificationsService],
