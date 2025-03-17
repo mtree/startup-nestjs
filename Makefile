@@ -1,7 +1,7 @@
 # Development commands
 .PHONY: docker-dev docker-dev-api docker-dev-ui local-dev local-dev-api local-dev-ui \
         install install-api install-ui test test-api test-ui \
-        lint lint-api lint-ui clean docker-clean generate-api-client
+        lint lint-api lint-ui clean docker-clean generate-api-client redis redis-start redis-stop redis-cli redis-flush redis-monitor redis-logs
 
 # ======================
 # Docker Development
@@ -10,7 +10,7 @@ docker-dev:
 	docker-compose up
 
 docker-dev-api:
-	docker-compose up api postgres
+	docker-compose up api postgres redis
 
 docker-dev-ui:
 	docker-compose up ui
@@ -31,9 +31,40 @@ local-dev-api: .env.local
 local-dev-ui: generate-api-client
 	cd ui && npm start
 
-# Start only postgres for local development
+# Start service containers for local development
 local-postgres:
 	docker-compose up postgres
+
+local-redis:
+	docker-compose up redis
+
+# Redis commands
+redis:
+	@echo "Redis commands:"
+	@echo "  make redis-start  - Start Redis in background"
+	@echo "  make redis-stop   - Stop Redis container"
+	@echo "  make redis-cli    - Open Redis CLI"
+	@echo "  make redis-flush  - Flush all Redis data"
+	@echo "  make redis-monitor - Monitor Redis commands in real-time"
+	@echo "  make redis-logs   - View Redis logs"
+
+redis-start:
+	docker-compose up -d redis
+
+redis-stop:
+	docker-compose stop redis
+
+redis-cli:
+	docker-compose exec redis redis-cli
+
+redis-flush:
+	docker-compose exec redis redis-cli FLUSHALL
+
+redis-monitor:
+	docker-compose exec redis redis-cli MONITOR
+
+redis-logs:
+	docker-compose logs -f redis
 
 # ======================
 # API Client Generation
@@ -122,7 +153,7 @@ help:
 	@echo ""
 	@echo "Docker Development:"
 	@echo "  make docker-dev        - Start all services in Docker"
-	@echo "  make docker-dev-api    - Start API and postgres in Docker"
+	@echo "  make docker-dev-api    - Start API, postgres and redis in Docker"
 	@echo "  make docker-dev-ui     - Start UI in Docker"
 	@echo ""
 	@echo "Local Development:"
@@ -130,6 +161,8 @@ help:
 	@echo "  make local-dev-api     - Start API locally"
 	@echo "  make local-dev-ui      - Start UI locally"
 	@echo "  make local-postgres    - Start only postgres in Docker"
+	@echo "  make local-redis       - Start only redis in Docker"
+	@echo "  make redis             - Show Redis commands"
 	@echo ""
 	@echo "API Client:"
 	@echo "  make generate-api-client - Generate TypeScript API client from OpenAPI spec"
