@@ -5,6 +5,7 @@ import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { routes } from './app.routes';
 import { ApiInterceptor } from './core/interceptors/api.interceptor';
+import { AuthInterceptor } from './features/auth/interceptors/auth.interceptor';
 import { ApiModule, Configuration } from '../lib/api-client';
 import { environment } from '../environments/environment';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -28,6 +29,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ApiInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
       multi: true
     },
     {

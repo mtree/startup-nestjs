@@ -1,0 +1,35 @@
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+mat-card {
+  max-width: 600px;
+  width: 100%;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+button {
+  min-width: 100px;
+  min-height: 36px;
+}
+
+mat-spinner {
+  margin: 0 auto;
+} 

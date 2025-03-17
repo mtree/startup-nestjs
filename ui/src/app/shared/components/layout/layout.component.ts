@@ -106,6 +106,7 @@ export class LayoutComponent implements OnInit {
   
   navItems: NavItem[] = [
     { icon: 'dashboard', label: $localize`:@@dashboard:Dashboard`, route: '/dashboard' },
+    { icon: 'add_circle', label: $localize`:@@createPost:Create Post`, route: '/posts/create' },
     { icon: 'person', label: $localize`:@@profile:Profile`, route: '/profile' },
     { icon: 'settings', label: $localize`:@@settings:Settings`, route: '/settings' },
     { icon: 'help', label: $localize`:@@help:Help`, route: '/help' }

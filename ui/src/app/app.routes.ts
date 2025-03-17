@@ -24,6 +24,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'posts',
+        loadChildren: () => import('./features/posts/posts.routes').then(m => m.POSTS_ROUTES)
       }
     ]
   },
