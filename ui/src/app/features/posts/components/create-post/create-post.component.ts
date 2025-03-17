@@ -8,7 +8,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-create-post',
@@ -34,7 +35,7 @@ export class CreatePostComponent implements OnInit {
     private formBuilder: FormBuilder,
     private postsService: PostsService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -58,16 +59,12 @@ export class CreatePostComponent implements OnInit {
     this.postsService.createPost(createPostDto).subscribe({
       next: (response) => {
         this.isSubmitting = false;
-        this.snackBar.open('Post created successfully! It will be processed in the background.', 'Close', {
-          duration: 5000,
-        });
+        this.notificationService.showSuccess('Post created successfully! You will be notified when processing completes.');
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         this.isSubmitting = false;
-        this.snackBar.open(`Failed to create post: ${error.message || 'Unknown error'}`, 'Close', {
-          duration: 5000,
-        });
+        this.notificationService.showError(`Failed to create post: ${error.message || 'Unknown error'}`);
       }
     });
   }

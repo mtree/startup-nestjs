@@ -7,11 +7,13 @@ import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { PostsQueueService } from './queue/posts.queue.service';
 import { PostsProcessingWorker } from './worker/posts-processing.worker';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { Post } from './entities/post.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post]),
+    NotificationsModule,
     BullModule.registerQueue({
       name: 'posts-processing-queue',
       defaultJobOptions: {

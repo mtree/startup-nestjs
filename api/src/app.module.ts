@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PostsModule } from './posts/posts.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { databaseConfig } from './config/database.config';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
 import { BullBoardModule } from '@bull-board/nestjs';
@@ -55,6 +56,7 @@ import { ExpressAdapter } from "@bull-board/express";
     AuthModule,
     TasksModule,
     PostsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
