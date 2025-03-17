@@ -92,16 +92,8 @@ import { AuthService } from '../../../features/auth/services/auth.service';
     }
     
     .content-container {
-      padding: 20px;
       flex: 1;
       overflow: auto;
-      height: calc(100% - 64px);
-    }
-    
-    @media (max-width: 599px) {
-      .content-container {
-        height: calc(100% - 56px);
-      }
     }
   `]
 })

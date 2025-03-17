@@ -37,3 +37,9 @@ img, video, iframe {
   overflow-y: auto;
   overflow-x: hidden;
 }
+
+/* Prevent double-tap zoom on mobile devices */
+button, a, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
