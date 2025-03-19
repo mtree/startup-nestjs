@@ -37,7 +37,7 @@ export class CrawlerService {
     const {
       debugMode = false,
       timeout = 30000,
-      retries = 3,
+      retries = 1,
       initialBackoffTime = 1000
     } = options;
 
@@ -73,7 +73,7 @@ export class CrawlerService {
         }
         
         if (--attemptsLeft <= 0) {
-          throw new Error(`Failed to crawl after multiple attempts: ${error.message}`);
+          throw new Error(`Failed to crawl after ${retries} attempts: ${error.message}`);
         }
         
         // Exponential backoff

@@ -45,7 +45,7 @@ import * as path from 'path';
           port: configService.get('REDIS_PORT', 6379),
         },
         defaultJobOptions: {
-          attempts: 3,
+          attempts: 1,
           backoff: {
             type: 'exponential',
             delay: 1000,

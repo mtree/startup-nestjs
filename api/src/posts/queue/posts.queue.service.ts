@@ -17,18 +17,7 @@ export class PostsQueueService {
         resourceUrl: post.resourceUrl,
         authorId: post.author?.id,
         createdAt: post.createdAt,
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
-        // Remove job from completed queue after 24 hours, as we'll store results in the database
-        removeOnComplete: 24 * 60 * 60 * 1000,
-        // Keep failed jobs for 7 days for inspection
-        removeOnFail: 7 * 24 * 60 * 60 * 1000,
-      },
+      }
     );
   }
 } 
