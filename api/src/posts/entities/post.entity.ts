@@ -19,6 +19,14 @@ export class Post {
   @Column()
   resourceUrl: string;
 
+  @ApiProperty({ example: 'Post Title', description: 'Title extracted from the resource' })
+  @Column({ nullable: true })
+  title: string;
+
+  @ApiProperty({ example: '{}', description: 'Metadata extracted from the crawled resource' })
+  @Column({ type: 'json', nullable: true })
+  metadata: Record<string, any>;
+
   @ApiProperty({ example: '2023-03-17T18:00:00.000Z', description: 'Post creation timestamp' })
   @CreateDateColumn()
   createdAt: Date;

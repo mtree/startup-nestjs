@@ -7,6 +7,8 @@ import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { PostsQueueService } from './queue/posts.queue.service';
 import { PostsProcessingWorker } from './worker/posts-processing.worker';
+import { CrawlerService } from './worker/services/crawler.service';
+import { PostProcessorService } from './worker/services/post-processor.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Post } from './entities/post.entity';
 
@@ -37,7 +39,13 @@ import { Post } from './entities/post.entity';
     })
   ],
   controllers: [PostsController],
-  providers: [PostsService, PostsQueueService, PostsProcessingWorker],
+  providers: [
+    PostsService, 
+    PostsQueueService, 
+    PostsProcessingWorker,
+    CrawlerService,
+    PostProcessorService
+  ],
   exports: [PostsService],
 })
 export class PostsModule {} 
