@@ -62,11 +62,10 @@ export class PostProcessorService {
     } catch (error) {
       this.logger.error(`Failed to process post ${postId}: ${error.message}`, error.stack);
       
-      // Update post status to failed
-      await this.updatePostStatus(postId, PostProcessingStatus.FAILED);
+      // Update post status to failed and store the error message
+      await this.updatePostWithError(postId, error.message);
       
-      // Don't send notification here - let the worker's onFailed event handle it
-      
+      // Important: Return a result that clearly indicates failure
       return {
         success: false,
         postId,
@@ -135,6 +134,18 @@ export class PostProcessorService {
       processingStatus: status,
       title,
       metadata: crawlResult.metadata
+    };
+    
+    await this.postsRepository.update(
+      { id: postId },
+      updateData
+    );
+  }
+
+  private async updatePostWithError(postId: string, errorMessage: string): Promise<void> {
+    const updateData: Partial<Post> = {
+      processingStatus: PostProcessingStatus.FAILED,
+      processingError: errorMessage?.substring(0, 500) // Truncate if needed
     };
     
     await this.postsRepository.update(

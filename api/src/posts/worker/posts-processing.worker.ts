@@ -21,9 +21,19 @@ export class PostsProcessingWorker extends WorkerHost {
     this.logger.log(`Processing job ${job.id} for post ${postId}, URL: ${resourceUrl}`);
     
     try {
-      return await this.postProcessorService.processPost(postId, resourceUrl, authorId, { debugMode });
+      const result = await this.postProcessorService.processPost(postId, resourceUrl, authorId, { debugMode });
+      
+      // Explicitly check if the processing was successful
+      if (!result.success) {
+        this.logger.error(`Job ${job.id} failed: ${result.error}`);
+        // Create a new error to throw so BullMQ properly marks it as failed
+        throw new Error(result.error);
+      }
+      
+      return result;
     } catch (error) {
       this.logger.error(`Failed to process job ${job.id}: ${error.message}`, error.stack);
+      // Ensure we're throwing the error so BullMQ marks the job as failed
       throw error;
     }
   }
@@ -33,6 +43,14 @@ export class PostsProcessingWorker extends WorkerHost {
     this.logger.log(`Job ${job.id} completed successfully`);
     
     const { postId, authorId, resourceUrl } = job.data;
+    
+    // Double-check the result to ensure we don't send success for a failed job
+    const result = job.returnvalue;
+    if (result && result.success === false) {
+      this.logger.warn(`Job ${job.id} was marked as completed but had error: ${result.error}`);
+      return; // Don't send completion notification for jobs that failed
+    }
+    
     this.postProcessorService.handleProcessingComplete(postId, authorId, resourceUrl);
   }
   

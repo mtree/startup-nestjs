@@ -19,7 +19,7 @@ import { Post } from './entities/post.entity';
     BullModule.registerQueue({
       name: 'posts-processing-queue',
       defaultJobOptions: {
-        attempts: 3,
+        attempts: 1,
         backoff: {
           type: 'exponential',
           delay: 2000,

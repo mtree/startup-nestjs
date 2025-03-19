@@ -27,6 +27,10 @@ export class Post {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
+  @ApiProperty({ example: 'Error message', description: 'Error message if processing failed' })
+  @Column({ nullable: true })
+  processingError: string;
+
   @ApiProperty({ example: '2023-03-17T18:00:00.000Z', description: 'Post creation timestamp' })
   @CreateDateColumn()
   createdAt: Date;
