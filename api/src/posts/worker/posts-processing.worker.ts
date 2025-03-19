@@ -25,15 +25,13 @@ export class PostsProcessingWorker extends WorkerHost {
       
       // Explicitly check if the processing was successful
       if (!result.success) {
-        this.logger.error(`Job ${job.id} failed: ${result.error}`);
-        // Create a new error to throw so BullMQ properly marks it as failed
+        // Just throw the error without additional logging (it's already logged in service)
         throw new Error(result.error);
       }
       
       return result;
     } catch (error) {
-      this.logger.error(`Failed to process job ${job.id}: ${error.message}`, error.stack);
-      // Ensure we're throwing the error so BullMQ marks the job as failed
+      // No need to log here - it's already logged in the service and will be caught by BullMQ
       throw error;
     }
   }
@@ -56,12 +54,13 @@ export class PostsProcessingWorker extends WorkerHost {
   
   @OnWorkerEvent('failed')
   onFailed(job: Job, error: Error) {
-    this.logger.error(`Job ${job.id} failed with error: ${error.message}`);
-    
     const { postId, authorId, resourceUrl } = job.data;
     const maxAttempts = job.opts.attempts || 1;
     
     if (job.attemptsMade >= maxAttempts) {
+      // Only log once on final failure
+      this.logger.error(`Job ${job.id} failed permanently after ${job.attemptsMade} attempts: ${error.message}`);
+      
       this.postProcessorService.handleProcessingFailed(
         postId, 
         authorId, 

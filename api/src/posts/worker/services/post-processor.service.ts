@@ -60,7 +60,8 @@ export class PostProcessorService {
         crawlResult 
       };
     } catch (error) {
-      this.logger.error(`Failed to process post ${postId}: ${error.message}`, error.stack);
+      // Log once with stack trace for debugging, but keep it concise
+      this.logger.error(`Failed to process post ${postId}: ${error.message}`);
       
       // Update post status to failed and store the error message
       await this.updatePostWithError(postId, error.message);
@@ -81,7 +82,7 @@ export class PostProcessorService {
     authorId: string, 
     resourceUrl: string
   ): Promise<void> {
-    this.logger.log(`Processing completed for post ${postId}`);
+    // No need to log here - it's already logged in the worker
     
     // Send notification of success
     if (authorId) {
@@ -103,7 +104,7 @@ export class PostProcessorService {
     attemptsMade: number,
     maxAttempts: number
   ): Promise<void> {
-    this.logger.error(`Processing failed for post ${postId}: ${error.message}`);
+    // No need to log here - it's already logged in the worker
     
     // Only send failure notification if we've exhausted all retries
     if (attemptsMade >= maxAttempts && authorId) {

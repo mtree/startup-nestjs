@@ -37,7 +37,7 @@ export class CrawlerService {
     const {
       debugMode = false,
       timeout = 30000,
-      retries = 1,
+      retries = 1, // Default to 1 attempt (no retries) - leave BullMQ to handle retries
       initialBackoffTime = 1000
     } = options;
 
@@ -66,7 +66,10 @@ export class CrawlerService {
         
         return result;
       } catch (error) {
-        this.logger.warn(`Crawling attempt failed: ${error.message}. Retries left: ${attemptsLeft - 1}`);
+        // Log more concisely only if debugMode is on or if this is the final attempt
+        if (debugMode || attemptsLeft <= 1) {
+          this.logger.warn(`Crawling attempt failed: ${error.message}. Retries left: ${attemptsLeft - 1}`);
+        }
         
         if (browser) {
           await browser.close();
