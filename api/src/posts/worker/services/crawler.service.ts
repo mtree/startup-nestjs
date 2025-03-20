@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Browser, chromium, Page } from 'playwright';
+import { Browser, BrowserContext, chromium, Page } from 'playwright';
 import { AdBlockService } from './adblock-service';
 
 export interface CrawlResult {
@@ -13,160 +13,141 @@ export interface CrawlResult {
     mainText: string;
   };
   content?: string;
+  matchedAdblockFiltersCount: number;
 }
 
 export interface CrawlOptions {
   debugMode?: boolean;
   timeout?: number;
   retries?: number;
-  initialBackoffTime?: number;
 }
 
 @Injectable()
 export class CrawlerService {
   private readonly logger = new Logger(CrawlerService.name);
-  private readonly defaultUserAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
-  ];
+  private readonly userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
   constructor(private readonly adBlockService: AdBlockService) {}
 
   /**
-   * Crawl a URL using Playwright with stealth techniques and optimizations
+   * Crawl a URL using Playwright with adblocking and performance optimizations
    */
   async crawlUrl(url: string, options: CrawlOptions = {}): Promise<CrawlResult> {
-    const {
-      debugMode = false,
-      timeout = 30000,
-      retries = 1, // Default to 1 attempt (no retries) - leave BullMQ to handle retries
-      initialBackoffTime = 1000
-    } = options;
-
-    let browser: Browser = null;
-    let page: Page = null;
-    let attemptsLeft = retries;
-    let backoffTime = initialBackoffTime;
+    const { debugMode = false, timeout = 30000, retries = 1 } = options;
     
-    while (attemptsLeft > 0) {
-      try {
-        const userAgent = this.getRandomUserAgent();
-        
-        // Setup and configure browser
-        browser = await this.setupBrowser(debugMode);
-        const context = await this.createStealthContext(browser, userAgent);
-        
-        // Initialize a new page with AdBlock
-        page = await this.createOptimizedPage(context);
-        
-        // Set up ad blocking
-        const blocker = await this.adBlockService.getBlocker();
-        await blocker.enableBlockingInPage(page);
-
-        blocker.on('request-blocked', (request) => {
-          this.logger.log('blocked', request.url);
-        });
-        
-        // Navigate to the URL
-        await page.goto(url, { waitUntil: 'networkidle', timeout });
-        
-        // Extract data from the page
-        const result = await this.extractPageData(page, debugMode);
-        
-        // Clean up
-        await browser.close();
-        
-        return result;
-      } catch (error) {
-        // Log more concisely only if debugMode is on or if this is the final attempt
-        if (debugMode || attemptsLeft <= 1) {
-          this.logger.warn(`Crawling attempt failed: ${error.message}. Retries left: ${attemptsLeft - 1}`);
+    let context: BrowserContext = null;
+    let browser: Browser = null;
+    let matchedFiltersCount = 0;
+    
+    try {
+      // Launch browser with optimized settings
+      browser = await chromium.launch({ 
+        headless: !debugMode,
+      });
+      
+      // Create optimized context
+      context = await browser.newContext({
+        userAgent: this.userAgent,
+        viewport: { width: 1280, height: 720 },
+        deviceScaleFactor: 1,
+        bypassCSP: true, // Bypass Content-Security-Policy to ensure page loads
+        javaScriptEnabled: true,
+        ignoreHTTPSErrors: true,
+      });
+      
+      // Create a new page
+      const page = await context.newPage();
+      
+      // Block unnecessary resource types for better performance
+      await context.route('**/*.{png,jpg,jpeg,gif,webp,svg,mp4,webm,ogg,mp3,wav,pdf,doc,docx,xls,xlsx,woff,woff2,ttf,otf,eot,css}', 
+        route => {
+          this.logger.log(`🚫 BLOCKED`);
+          return route.abort('blockedbyclient');
         }
+      );
+      
+      // Apply adblocking
+      const blocker = await this.adBlockService.getBlocker();
+      await blocker.enableBlockingInPage(page);
+      
+      // Track blocked requests
+      blocker.on('filter-matched', (request) => {
+        matchedFiltersCount++;
         
-        if (browser) {
-          await browser.close();
-        }
-        
-        if (--attemptsLeft <= 0) {
-          throw new Error(`Failed to crawl after ${retries} attempts: ${error.message}`);
-        }
-        
-        // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, backoffTime));
-        backoffTime *= 2; // Double the backoff time for next attempt
+      });
+      
+      // Set timeouts and optimized navigation settings
+      page.setDefaultTimeout(timeout);
+      page.setDefaultNavigationTimeout(timeout);
+      
+      // Navigate with optimized settings
+      await page.goto(url, { 
+        waitUntil: 'domcontentloaded', // Faster than 'networkidle'
+        timeout 
+      });
+      
+      // Extract page data
+      const result = await this.extractPageData(page, debugMode);
+      
+      // Add blocked requests count to the result
+      result.matchedAdblockFiltersCount = matchedFiltersCount;
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to crawl URL ${url}: ${error.message}`);
+      
+      // Try retry if configured
+      if (retries > 1) {
+        this.logger.log(`Retrying URL ${url}, ${retries-1} attempts left`);
+        return this.crawlUrl(url, { ...options, retries: retries - 1 });
+      }
+      
+      throw error;
+    } finally {
+      // Always close the browser
+      if (browser) {
+        await context.close().catch(() => {});
+        await browser.close().catch(() => {});
       }
     }
-
-    throw new Error('Failed to crawl URL after all retry attempts');
-  }
-
-  private getRandomUserAgent(): string {
-    const index = Math.floor(Math.random() * this.defaultUserAgents.length);
-    return this.defaultUserAgents[index];
-  }
-
-  private async setupBrowser(debugMode: boolean): Promise<Browser> {
-    return chromium.launch({ 
-      headless: !debugMode,
-    });
-  }
-
-  private async createStealthContext(browser: Browser, userAgent: string) {
-    return browser.newContext({
-      userAgent,
-      viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 1,
-      hasTouch: false,
-      isMobile: false,
-      javaScriptEnabled: true,
-    });
-  }
-
-  private async createOptimizedPage(context: any) {
-    const page = await context.newPage();
-    
-    // Set extra headers to appear more like a real browser
-    await page.setExtraHTTPHeaders({
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      'DNT': '1', // Do Not Track
-    });
-
-    return page;
   }
 
   private async extractPageData(page: Page, debugMode: boolean): Promise<CrawlResult> {
     const title = await page.title();
-    const content = await page.content();
     
+    // Get metadata via a single evaluation call (more efficient)
     const metadata = await page.evaluate(() => {
       const getMetaTag = (name) => {
         const element = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
-        return element ? element.getAttribute('content') : null;
+        return element ? element.getAttribute('content') : '';
       };
       
       return {
         title: document.title,
-        description: getMetaTag('description') || getMetaTag('og:description'),
-        image: getMetaTag('og:image'),
-        author: getMetaTag('author'),
-        keywords: getMetaTag('keywords'),
-        mainText: document.body.innerText.substring(0, 1000) // First 1000 chars of text
+        description: getMetaTag('description') || getMetaTag('og:description') || '',
+        image: getMetaTag('og:image') || '',
+        author: getMetaTag('author') || '',
+        keywords: getMetaTag('keywords') || '',
+        mainText: document.body.innerText.substring(0, 1000) || ''
       };
     });
     
-    // Take screenshot for debugging
+    // Debug snapshot if needed
     if (debugMode) {
       await page.screenshot({ path: `debug-${Date.now()}.png` });
+      return { 
+        title, 
+        metadata,
+        content: await page.content(),
+        matchedAdblockFiltersCount: 0 // Will be updated in the main method
+      };
     }
     
     return { 
       title, 
       metadata,
-      content: debugMode ? content : undefined // Only include full content in debug mode
+      content: undefined, 
+      matchedAdblockFiltersCount: 0 // Will be updated in the main method
     };
   }
 } 

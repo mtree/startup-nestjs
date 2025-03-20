@@ -10,6 +10,9 @@ import fetch from 'cross-fetch';
 const BLOCKLIST_URLS = [
   'https://easylist.to/easylist/easylist.txt',
   'https://easylist.to/easylist/easyprivacy.txt',
+  'https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-online.txt',
+  'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext'
+
 ];
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
@@ -48,7 +51,7 @@ export class AdBlockService implements OnModuleInit {
       if (filterText) {
         try {
           this.blocker = await PlaywrightBlocker.parse(filterText);
-          this.logger.log('EasyList filters loaded successfully');
+          this.logger.log('Adblocker filters loaded successfully');
         } catch (error) {
           this.logger.error(`Failed to create blocker from lists: ${error.message}`);
           // Keep the empty blocker created above

@@ -11,6 +11,7 @@ export interface ProcessPostResult {
   authorId: string;
   resourceUrl: string;
   crawlResult?: CrawlResult;
+  matchedAdblockFiltersCount?: number;
   error?: string;
 }
 
@@ -44,7 +45,7 @@ export class PostProcessorService {
       // Crawl the URL
       this.logger.log(`Starting to crawl URL: ${resourceUrl}`);
       const crawlResult = await this.crawlerService.crawlUrl(resourceUrl, { debugMode });
-      this.logger.log(`Finished crawling URL: ${resourceUrl}`);
+      this.logger.log(`Finished crawling URL: ${resourceUrl}. Matched ${crawlResult.matchedAdblockFiltersCount} Adblock filters.`);
       
       // Extract title from crawl result
       const title = crawlResult?.title || '';
@@ -56,7 +57,8 @@ export class PostProcessorService {
         success: true, 
         postId, 
         authorId, 
-        resourceUrl, 
+        resourceUrl,
+        matchedAdblockFiltersCount: crawlResult.matchedAdblockFiltersCount,
         crawlResult 
       };
     } catch (error) {
@@ -134,7 +136,10 @@ export class PostProcessorService {
     const updateData: Partial<Post> = {
       processingStatus: status,
       title,
-      metadata: crawlResult.metadata
+      metadata: {
+        ...crawlResult.metadata,
+        blockedRequestsCount: crawlResult.matchedAdblockFiltersCount
+      }
     };
     
     await this.postsRepository.update(
