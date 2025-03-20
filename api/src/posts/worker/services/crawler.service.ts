@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Browser, chromium, Page } from 'playwright';
+import { AdBlockService } from './adblock-service';
 
 export interface CrawlResult {
   title: string;
@@ -30,6 +31,8 @@ export class CrawlerService {
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
   ];
 
+  constructor(private readonly adBlockService: AdBlockService) {}
+
   /**
    * Crawl a URL using Playwright with stealth techniques and optimizations
    */
@@ -53,7 +56,41 @@ export class CrawlerService {
         // Setup and configure browser
         browser = await this.setupBrowser(debugMode);
         const context = await this.createStealthContext(browser, userAgent);
+        
+        // Initialize a new page with AdBlock
         page = await this.createOptimizedPage(context);
+        
+        // Set up ad blocking
+        const blocker = await this.adBlockService.getBlocker();
+        await blocker.enableBlockingInPage(page);
+
+        blocker.on('request-blocked', (request) => {
+          this.logger.log('blocked', request.url);
+        });
+      
+        blocker.on('request-redirected', (request) => {
+          this.logger.log('redirected', request.url);
+        });
+      
+        blocker.on('request-whitelisted', (request) => {
+          this.logger.log('whitelisted', request.url);
+        });
+      
+        blocker.on('csp-injected', (request, csps: string) => {
+          this.logger.log('csp', request.url, csps);
+        });
+      
+        blocker.on('script-injected', (script: string, url: string) => {
+          this.logger.log('script', script.length, url);
+        });
+      
+        blocker.on('style-injected', (style: string, url: string) => {
+          this.logger.log('style', style.length, url);
+        });
+      
+        blocker.on('filter-matched', ({ filter, exception }, context) => {
+          this.logger.log('filter-matched', filter, exception, context);
+        });
         
         // Navigate to the URL
         await page.goto(url, { waitUntil: 'networkidle', timeout });
@@ -113,19 +150,6 @@ export class CrawlerService {
   private async createOptimizedPage(context: any) {
     const page = await context.newPage();
     
-    // Block unnecessary resources
-    await page.route('**/*.{png,jpg,jpeg,gif,svg,pdf,woff,woff2,ttf,otf}', route => {
-      route.abort();
-    });
-    
-    // Continue with CSS for better rendering
-    await page.route('**/*.css', route => route.continue());
-    
-    // Block common analytics and ad scripts
-    await page.route(/(google-analytics|googletagmanager|adservices|adsense|doubleclick|facebook|twitter)/i, 
-      route => route.abort()
-    );
-
     // Set extra headers to appear more like a real browser
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',

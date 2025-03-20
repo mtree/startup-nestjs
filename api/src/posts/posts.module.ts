@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from "@bull-board/nestjs";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { HttpModule } from '@nestjs/axios';
 import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { PostsQueueService } from './queue/posts.queue.service';
@@ -11,10 +12,12 @@ import { CrawlerService } from './worker/services/crawler.service';
 import { PostProcessorService } from './worker/services/post-processor.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Post } from './entities/post.entity';
+import { AdBlockService } from './worker/services/adblock-service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post]),
+    HttpModule,
     NotificationsModule,
     BullModule.registerQueue({
       name: 'posts-processing-queue',
@@ -36,7 +39,7 @@ import { Post } from './entities/post.entity';
     BullBoardModule.forFeature({
       name: 'posts-processing-queue',
       adapter: BullMQAdapter
-    })
+    }),
   ],
   controllers: [PostsController],
   providers: [
@@ -44,7 +47,8 @@ import { Post } from './entities/post.entity';
     PostsQueueService, 
     PostsProcessingWorker,
     CrawlerService,
-    PostProcessorService
+    PostProcessorService,
+    AdBlockService
   ],
   exports: [PostsService],
 })
