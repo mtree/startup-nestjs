@@ -18,6 +18,7 @@ export class AdBlockService implements OnModuleInit {
   private readonly logger = new Logger(AdBlockService.name);
   private readonly cacheDir = join(process.cwd(), 'cache');
   private readonly cacheFile = join(this.cacheDir, 'blocklist.json');
+  private readonly blocklistFile = join(this.cacheDir, 'blocklist.txt');
   private blocker: PlaywrightBlocker | null = null;
   private isInitialized = false;
 
@@ -46,13 +47,7 @@ export class AdBlockService implements OnModuleInit {
       const filterText = await this.getFilterText();
       if (filterText) {
         try {
-          this.blocker = await PlaywrightBlocker.fromLists(
-            fetch,
-            [filterText], // Use as a single string for simpler parsing
-            {
-              enableCompression: true,
-            }
-          );
+          this.blocker = await PlaywrightBlocker.parse(filterText);
           this.logger.log('EasyList filters loaded successfully');
         } catch (error) {
           this.logger.error(`Failed to create blocker from lists: ${error.message}`);
@@ -95,24 +90,21 @@ export class AdBlockService implements OnModuleInit {
       try {
         // Check if the cache file exists
         await fs.access(this.cacheFile);
+        await fs.access(this.blocklistFile);
         
         // Check if it's expired
         if (await this.isExpired()) {
           await this.updateBlocklist();
         }
         
-        // Read the cached blocklist
-        const data = await fs.readFile(this.cacheFile, 'utf-8');
-        const { blocklist } = JSON.parse(data);
-        return blocklist;
+        // Read the cached blocklist directly from the text file
+        return await fs.readFile(this.blocklistFile, 'utf-8');
       } catch (error) {
         // Cache doesn't exist or is invalid, fetch from remote
         await this.updateBlocklist();
         
         // Read the newly cached blocklist
-        const data = await fs.readFile(this.cacheFile, 'utf-8');
-        const { blocklist } = JSON.parse(data);
-        return blocklist;
+        return await fs.readFile(this.blocklistFile, 'utf-8');
       }
     } catch (error) {
       this.logger.error(`Failed to get filter text: ${error.message}`);
@@ -152,14 +144,16 @@ export class AdBlockService implements OnModuleInit {
         throw new Error('No valid blocklists were fetched');
       }
       
-      // Save to cache with timestamp
+      // Save metadata to cache with timestamp
       await fs.writeFile(
         this.cacheFile,
         JSON.stringify({
           timestamp: Date.now(),
-          blocklist,
         })
       );
+      
+      // Save the actual blocklist content as a plain text file
+      await fs.writeFile(this.blocklistFile, blocklist);
       
       this.logger.log('Blocklist updated successfully');
     } catch (error) {

@@ -67,30 +67,6 @@ export class CrawlerService {
         blocker.on('request-blocked', (request) => {
           this.logger.log('blocked', request.url);
         });
-      
-        blocker.on('request-redirected', (request) => {
-          this.logger.log('redirected', request.url);
-        });
-      
-        blocker.on('request-whitelisted', (request) => {
-          this.logger.log('whitelisted', request.url);
-        });
-      
-        blocker.on('csp-injected', (request, csps: string) => {
-          this.logger.log('csp', request.url, csps);
-        });
-      
-        blocker.on('script-injected', (script: string, url: string) => {
-          this.logger.log('script', script.length, url);
-        });
-      
-        blocker.on('style-injected', (style: string, url: string) => {
-          this.logger.log('style', style.length, url);
-        });
-      
-        blocker.on('filter-matched', ({ filter, exception }, context) => {
-          this.logger.log('filter-matched', filter, exception, context);
-        });
         
         // Navigate to the URL
         await page.goto(url, { waitUntil: 'networkidle', timeout });
