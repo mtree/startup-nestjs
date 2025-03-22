@@ -1,8 +1,9 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, UnrecoverableError } from 'bullmq';
 import { CrawlerService } from './services/crawler.service';
 import { PostProcessorService } from './services/post-processor.service';
+import { isNonRetriableError } from './utils/error-utils';
 
 @Processor('posts-processing-queue')
 export class PostsProcessingWorker extends WorkerHost {
@@ -25,13 +26,21 @@ export class PostsProcessingWorker extends WorkerHost {
       
       // Explicitly check if the processing was successful
       if (!result.success) {
-        // Just throw the error without additional logging (it's already logged in service)
+        // If we've reached this point with a failure result, just throw a regular error
+        // This will allow normal retry behavior for recoverable errors
         throw new Error(result.error);
       }
       
       return result;
     } catch (error) {
-      // No need to log here - it's already logged in the service and will be caught by BullMQ
+      // Just check if it's already an UnrecoverableError and pass it through
+      // Otherwise, look for specific error string patterns only at this top level
+      if (!(error instanceof UnrecoverableError) && error.message && isNonRetriableError(error)) {
+        this.logger.warn(`Converting to UnrecoverableError in worker: ${error.message}`);
+        throw new UnrecoverableError(error.message);
+      }
+      
+      // Pass through the error to BullMQ
       throw error;
     }
   }
@@ -57,15 +66,28 @@ export class PostsProcessingWorker extends WorkerHost {
     const { postId, authorId, resourceUrl } = job.data;
     const maxAttempts = job.opts.attempts || 1;
     
-    if (job.attemptsMade >= maxAttempts) {
-      // Only log job metadata at this level - detailed error is already logged at lower levels
-      this.logger.error(`Job ${job.id} for post ${postId} failed permanently after ${job.attemptsMade} attempts`, {
-        jobId: job.id,
-        postId,
-        attemptsMade: job.attemptsMade,
-        maxAttempts,
-        resourceUrl: resourceUrl.substring(0, 100) // Truncate very long URLs
-      });
+    // If it's an UnrecoverableError or we've reached max attempts, handle permanent failure
+    if (error instanceof UnrecoverableError || job.attemptsMade >= maxAttempts) {
+      // For UnrecoverableError, log it clearly so we know retries were skipped
+      if (error instanceof UnrecoverableError) {
+        this.logger.warn(`Job ${job.id} for post ${postId} failed with unrecoverable error, skipping retries:`, {
+          jobId: job.id,
+          postId,
+          attemptsMade: job.attemptsMade,
+          maxAttempts,
+          errorMessage: error.message,
+          resourceUrl: resourceUrl.substring(0, 100) // Truncate very long URLs
+        });
+      } else {
+        // Only log job metadata at this level - detailed error is already logged at lower levels
+        this.logger.error(`Job ${job.id} for post ${postId} failed permanently after ${job.attemptsMade} attempts`, {
+          jobId: job.id,
+          postId,
+          attemptsMade: job.attemptsMade,
+          maxAttempts,
+          resourceUrl: resourceUrl.substring(0, 100) // Truncate very long URLs
+        });
+      }
       
       this.postProcessorService.handleProcessingFailed(
         postId, 

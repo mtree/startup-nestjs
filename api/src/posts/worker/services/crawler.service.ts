@@ -4,6 +4,8 @@ import { AdBlockService } from './adblock-service';
 import { Request } from '@ghostery/adblocker';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
+import { UnrecoverableError } from 'bullmq';
+import { NON_RETRIABLE_ERROR_CODES } from '../utils/error-utils';
 
 // Interfaces
 export interface MetadataResult {
@@ -228,7 +230,13 @@ export class CrawlerService {
         errorDetails: error.message
       });
       
-      // Rethrow with same error instance to maintain stack trace
+      // Check if this is a non-retriable error
+      if (NON_RETRIABLE_ERROR_CODES.some(code => error.message?.includes(code))) {
+        this.logger.warn(`Non-retriable network error detected, skipping retries: ${url}`);
+        throw new UnrecoverableError(`Navigation failed for ${url}: ${error.message}`);
+      }
+      
+      // For other errors, just pass through
       throw error;
     }
   }
@@ -241,27 +249,36 @@ export class CrawlerService {
     url: string, 
     options: CrawlOptions
   ): Promise<CrawlResult> {
-    // Log just a summary at this level since detailed error was already logged at the source
-    this.logger.warn(`Crawl failed for ${url}${options.retries > 1 ? ' (will retry)' : ''}`);
+    // Check if this is already an UnrecoverableError (from navigateToPage)
+    const isUnrecoverable = error instanceof UnrecoverableError;
     
-    // Try retry if configured
-    if (options.retries > 1) {
-      this.logger.log(`Retrying URL ${url}, ${options.retries-1} attempts left`);
-      return this.crawlUrl(url, { 
-        ...options, 
-        retries: options.retries - 1 
-      });
+    // Log with appropriate context based on error type
+    if (isUnrecoverable) {
+      this.logger.warn(`Crawl failed with unrecoverable error for ${url}, skipping retries`);
+    } else if (options.retries > 1) {
+      this.logger.warn(`Crawl failed for ${url} (will retry)`);
+    } else {
+      this.logger.warn(`Crawl failed for ${url} (no more retries)`);
     }
     
-    // Return a valid result with error information instead of throwing
-    return {
-      title: `Failed to load: ${url}`,
-      metadata: DEFAULT_METADATA,
-      matchedAdblockFiltersCount: 0,
-      blockedResourcesCount: 0,
-      success: false,
-      errorMessage: error.message
-    };
+    // Don't retry if it's an UnrecoverableError or we're out of retries
+    if (isUnrecoverable || options.retries <= 1) {
+      return {
+        title: `Failed to load: ${url}`,
+        metadata: DEFAULT_METADATA,
+        matchedAdblockFiltersCount: 0,
+        blockedResourcesCount: 0,
+        success: false,
+        errorMessage: error.message || `Failed to load: ${url}`
+      };
+    }
+    
+    // Try retry if configured
+    this.logger.log(`Retrying URL ${url}, ${options.retries-1} attempts left`);
+    return this.crawlUrl(url, { 
+      ...options, 
+      retries: options.retries - 1 
+    });
   }
 
   /**

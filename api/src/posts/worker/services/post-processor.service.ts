@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Post, PostProcessingStatus } from '../../entities/post.entity';
 import { CrawlerService, CrawlResult } from './crawler.service';
 import { NotificationsService } from '../../../notifications/notifications.service';
+import { UnrecoverableError } from 'bullmq';
 
 export interface ProcessPostResult {
   success: boolean;
@@ -54,14 +55,8 @@ export class PostProcessorService {
         // Update post status to failed and store the error message
         await this.updatePostWithError(postId, crawlResult.errorMessage);
         
-        return {
-          success: false,
-          postId,
-          authorId,
-          resourceUrl,
-          crawlResult,
-          error: crawlResult.errorMessage
-        };
+        // Simply throw an error with the message - if it was unrecoverable, that information is in the message
+        throw new Error(crawlResult.errorMessage);
       }
       
       this.logger.log(`Finished crawling URL: ${resourceUrl}. Matched ${crawlResult.matchedAdblockFiltersCount} Adblock filters and blocked ${crawlResult.blockedResourcesCount} resource requests.`);
@@ -81,17 +76,33 @@ export class PostProcessorService {
         crawlResult 
       };
     } catch (error) {
-      // Log with context but be concise - the root error was likely already logged
+      // Just pass through any UnrecoverableError
+      if (error instanceof UnrecoverableError) {
+        // Log that we received an unrecoverable error
+        this.logger.warn(`Received unrecoverable error for post ${postId}`, {
+          postId,
+          errorType: 'UnrecoverableError',
+          message: error.message
+        });
+        
+        // Update post status to failed
+        await this.updatePostWithError(postId, error.message);
+        
+        // Rethrow the UnrecoverableError directly
+        throw error;
+      }
+      
+      // Regular errors are just logged normally
       this.logger.error(`Processing failed for post ${postId}`, {
         postId,
         resourceUrl,
-        errorSummary: error.message?.substring(0, 100) // Just log a summary of the error
+        errorSummary: error.message?.substring(0, 100)
       });
       
       // Update post status to failed and store the error message
       await this.updatePostWithError(postId, error.message);
       
-      // Important: Return a result that clearly indicates failure
+      // Return a result that clearly indicates failure
       return {
         success: false,
         postId,
