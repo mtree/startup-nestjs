@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Browser, BrowserContext, chromium, Page } from 'playwright';
 import { AdBlockService } from './adblock-service';
 import { Request } from '@ghostery/adblocker';
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
 
 export interface CrawlResult {
   title: string;
@@ -13,6 +15,15 @@ export interface CrawlResult {
     keywords: string;
     mainText: string;
   };
+  readability?: {
+    title: string;
+    byline: string;
+    content: string;
+    textContent: string;
+    length: number;
+    excerpt: string;
+    siteName: string;
+  };
   content?: string;
   matchedAdblockFiltersCount: number;
   blockedResourcesCount: number;
@@ -23,6 +34,8 @@ export interface CrawlOptions {
   timeout?: number;
   retries?: number;
 }
+
+const BLOCKABLE_RESOURCE_TYPES = ['image', 'font', 'media', 'stylesheet'];
 
 @Injectable()
 export class CrawlerService {
@@ -71,10 +84,9 @@ export class CrawlerService {
       await page.route('**/*', async (route) => {
         const url = route.request().url();
         const resourceType = route.request().resourceType();
-        const blockableResourceTypes = ['image', 'font', 'media', 'stylesheet'];
         
         // Handle direct resource type matching
-        if (blockableResourceTypes.includes(resourceType)) {
+        if (BLOCKABLE_RESOURCE_TYPES.includes(resourceType)) {
           this.logger.debug(`Blocked ${resourceType}: ${url}`);
           blockedResourcesCount++;
           return route.abort();
@@ -89,7 +101,7 @@ export class CrawlerService {
           });
           
           const guessedType = blockableRequest.guessTypeOfRequest();
-          if (blockableResourceTypes.includes(guessedType)) {
+          if (BLOCKABLE_RESOURCE_TYPES.includes(guessedType)) {
             this.logger.debug(`Blocked (guessed ${guessedType}): ${url}`);
             blockedResourcesCount++;
             return route.abort();
@@ -145,6 +157,7 @@ export class CrawlerService {
 
   private async extractPageData(page: Page, debugMode: boolean): Promise<CrawlResult> {
     const title = await page.title();
+    const htmlContent = await page.content();
     
     // Get metadata via a single evaluation call (more efficient)
     const metadata = await page.evaluate(() => {
@@ -163,13 +176,17 @@ export class CrawlerService {
       };
     });
     
+    // Process page with Readability
+    const readabilityResult = await this.extractReadableContent(htmlContent);
+    
     // Debug snapshot if needed
     if (debugMode) {
       await page.screenshot({ path: `debug-${Date.now()}.png` });
       return { 
         title, 
         metadata,
-        content: await page.content(),
+        readability: readabilityResult,
+        content: htmlContent,
         matchedAdblockFiltersCount: 0, // Will be updated in the main method
         blockedResourcesCount: 0 // Will be updated in the main method
       };
@@ -178,9 +195,41 @@ export class CrawlerService {
     return { 
       title, 
       metadata,
+      readability: readabilityResult,
       content: undefined, 
       matchedAdblockFiltersCount: 0, // Will be updated in the main method
       blockedResourcesCount: 0 // Will be updated in the main method
     };
+  }
+
+  /**
+   * Extract content using Readability
+   * @param html The HTML content to process
+   * @returns Processed content from Readability
+   */
+  private extractReadableContent(html: string) {
+    try {
+      const dom = new JSDOM(html);
+      const reader = new Readability(dom.window.document);
+      const result = reader.parse();
+      
+      if (!result) {
+        this.logger.warn('Readability could not parse the page content');
+        return null;
+      }
+      
+      return {
+        title: result.title,
+        byline: result.byline,
+        content: result.content,
+        textContent: result.textContent,
+        length: result.length,
+        excerpt: result.excerpt,
+        siteName: result.siteName
+      };
+    } catch (error) {
+      this.logger.error(`Readability extraction error: ${error.message}`);
+      return null;
+    }
   }
 } 
