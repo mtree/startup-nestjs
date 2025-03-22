@@ -13,6 +13,8 @@ import { PostProcessorService } from './worker/services/post-processor.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Post } from './entities/post.entity';
 import { AdBlockService } from './worker/services/adblock-service';
+import { CacheService, FileStorageProvider } from './worker/services/cache';
+import { CACHE_STORAGE_PROVIDER } from './worker/services/cache/cache-storage.interface';
 
 @Module({
   imports: [
@@ -48,7 +50,12 @@ import { AdBlockService } from './worker/services/adblock-service';
     PostsProcessingWorker,
     CrawlerService,
     PostProcessorService,
-    AdBlockService
+    AdBlockService,
+    {
+      provide: CACHE_STORAGE_PROVIDER,
+      useClass: FileStorageProvider
+    },
+    CacheService
   ],
   exports: [PostsService],
 })

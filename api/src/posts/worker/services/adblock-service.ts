@@ -1,10 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { PlaywrightBlocker } from '@ghostery/adblocker-playwright';
-import { promises as fs } from 'fs';
-import { join } from 'path';
 import { firstValueFrom } from 'rxjs';
-import fetch from 'cross-fetch';
+import { CacheService } from './cache';
 
 // Standard EasyList sources only
 const BLOCKLIST_URLS = [
@@ -12,20 +10,22 @@ const BLOCKLIST_URLS = [
   'https://easylist.to/easylist/easyprivacy.txt',
   'https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-online.txt',
   'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext'
-
 ];
+
+const CACHE_KEY = 'adblock-filters';
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
 
 @Injectable()
 export class AdBlockService implements OnModuleInit {
   private readonly logger = new Logger(AdBlockService.name);
-  private readonly cacheDir = join(process.cwd(), 'cache');
-  private readonly cacheFile = join(this.cacheDir, 'blocklist.json');
-  private readonly blocklistFile = join(this.cacheDir, 'blocklist.txt');
   private blocker: PlaywrightBlocker | null = null;
   private isInitialized = false;
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly cacheService: CacheService
+  ) {}
 
   async onModuleInit() {
     await this.initialize();
@@ -86,29 +86,15 @@ export class AdBlockService implements OnModuleInit {
    */
   private async getFilterText(): Promise<string> {
     try {
-      // Ensure the cache directory exists
-      await this.ensureCacheDir();
-      
-      // Try to read from cache first
-      try {
-        // Check if the cache file exists
-        await fs.access(this.cacheFile);
-        await fs.access(this.blocklistFile);
-        
-        // Check if it's expired
-        if (await this.isExpired()) {
-          await this.updateBlocklist();
+      // Use CacheService to fetch or update the filter text
+      return await this.cacheService.getOrFetch<string>(
+        CACHE_KEY,
+        () => this.fetchBlocklists(),
+        {
+          expirationMs: CACHE_EXPIRATION,
+          subDirectory: 'adblock'
         }
-        
-        // Read the cached blocklist directly from the text file
-        return await fs.readFile(this.blocklistFile, 'utf-8');
-      } catch (error) {
-        // Cache doesn't exist or is invalid, fetch from remote
-        await this.updateBlocklist();
-        
-        // Read the newly cached blocklist
-        return await fs.readFile(this.blocklistFile, 'utf-8');
-      }
+      );
     } catch (error) {
       this.logger.error(`Failed to get filter text: ${error.message}`);
       return ''; // Return empty string on error
@@ -116,19 +102,19 @@ export class AdBlockService implements OnModuleInit {
   }
   
   /**
-   * Update the blocklist from remote sources
+   * Fetch blocklists from remote sources
    */
-  private async updateBlocklist(): Promise<void> {
+  private async fetchBlocklists(): Promise<string> {
+    this.logger.log('Fetching blocklists from remote sources...');
+    
     try {
-      this.logger.log('Updating blocklists from remote sources...');
-      
       // Fetch all blocklists
       const blocklists = await Promise.all(
         BLOCKLIST_URLS.map(async (url) => {
           try {
             const response = await firstValueFrom(this.httpService.get(url, {
               headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': USER_AGENT
               }
             }));
             return response.data;
@@ -147,49 +133,11 @@ export class AdBlockService implements OnModuleInit {
         throw new Error('No valid blocklists were fetched');
       }
       
-      // Save metadata to cache with timestamp
-      await fs.writeFile(
-        this.cacheFile,
-        JSON.stringify({
-          timestamp: Date.now(),
-        })
-      );
-      
-      // Save the actual blocklist content as a plain text file
-      await fs.writeFile(this.blocklistFile, blocklist);
-      
-      this.logger.log('Blocklist updated successfully');
+      this.logger.log('Blocklists fetched successfully');
+      return blocklist;
     } catch (error) {
-      this.logger.error(`Failed to update blocklist: ${error.message}`);
+      this.logger.error(`Failed to fetch blocklists: ${error.message}`);
       throw error;
-    }
-  }
-  
-  /**
-   * Check if the cached blocklist is expired
-   */
-  private async isExpired(): Promise<boolean> {
-    try {
-      const data = await fs.readFile(this.cacheFile, 'utf-8');
-      const { timestamp } = JSON.parse(data);
-      
-      // Check if cache has expired
-      return Date.now() - timestamp > CACHE_EXPIRATION;
-    } catch (error) {
-      // If there's an error reading the file, consider it expired
-      return true;
-    }
-  }
-  
-  /**
-   * Ensure the cache directory exists
-   */
-  private async ensureCacheDir(): Promise<void> {
-    try {
-      await fs.access(this.cacheDir);
-    } catch (error) {
-      // Directory doesn't exist, create it
-      await fs.mkdir(this.cacheDir, { recursive: true });
     }
   }
 } 
