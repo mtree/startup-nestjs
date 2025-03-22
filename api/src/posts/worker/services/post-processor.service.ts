@@ -48,7 +48,8 @@ export class PostProcessorService {
       
       // Check if crawling was successful
       if (!crawlResult.success) {
-        this.logger.error(`Failed to crawl URL ${resourceUrl}: ${crawlResult.errorMessage}`);
+        // Only log high-level context without duplicating the error message that was already logged in CrawlerService
+        this.logger.warn(`Crawl failed for post ${postId} - recording error and updating status`);
         
         // Update post status to failed and store the error message
         await this.updatePostWithError(postId, crawlResult.errorMessage);
@@ -80,8 +81,12 @@ export class PostProcessorService {
         crawlResult 
       };
     } catch (error) {
-      // Log once with stack trace for debugging, but keep it concise
-      this.logger.error(`Failed to process post ${postId}: ${error.message}`);
+      // Log with context but be concise - the root error was likely already logged
+      this.logger.error(`Processing failed for post ${postId}`, {
+        postId,
+        resourceUrl,
+        errorSummary: error.message?.substring(0, 100) // Just log a summary of the error
+      });
       
       // Update post status to failed and store the error message
       await this.updatePostWithError(postId, error.message);

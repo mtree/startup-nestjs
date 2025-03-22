@@ -221,8 +221,14 @@ export class CrawlerService {
         timeout 
       });
     } catch (error) {
-      // Log the error but re-throw it to be handled by the main try-catch
-      this.logger.error(`Navigation failed for ${url}: ${error.message}`);
+      // Log the detailed error once at the source with all context
+      this.logger.error(`Navigation failed for ${url}: ${error.message}`, {
+        url,
+        errorType: error.name,
+        errorDetails: error.message
+      });
+      
+      // Rethrow with same error instance to maintain stack trace
       throw error;
     }
   }
@@ -235,7 +241,8 @@ export class CrawlerService {
     url: string, 
     options: CrawlOptions
   ): Promise<CrawlResult> {
-    this.logger.error(`Failed to crawl URL ${url}: ${error.message}`);
+    // Log just a summary at this level since detailed error was already logged at the source
+    this.logger.warn(`Crawl failed for ${url}${options.retries > 1 ? ' (will retry)' : ''}`);
     
     // Try retry if configured
     if (options.retries > 1) {

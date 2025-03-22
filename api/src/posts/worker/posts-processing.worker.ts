@@ -58,8 +58,14 @@ export class PostsProcessingWorker extends WorkerHost {
     const maxAttempts = job.opts.attempts || 1;
     
     if (job.attemptsMade >= maxAttempts) {
-      // Only log once on final failure
-      this.logger.error(`Job ${job.id} failed permanently after ${job.attemptsMade} attempts: ${error.message}`);
+      // Only log job metadata at this level - detailed error is already logged at lower levels
+      this.logger.error(`Job ${job.id} for post ${postId} failed permanently after ${job.attemptsMade} attempts`, {
+        jobId: job.id,
+        postId,
+        attemptsMade: job.attemptsMade,
+        maxAttempts,
+        resourceUrl: resourceUrl.substring(0, 100) // Truncate very long URLs
+      });
       
       this.postProcessorService.handleProcessingFailed(
         postId, 
