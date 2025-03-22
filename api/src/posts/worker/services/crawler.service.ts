@@ -15,6 +15,7 @@ export interface CrawlResult {
   };
   content?: string;
   matchedAdblockFiltersCount: number;
+  blockedResourcesCount: number;
 }
 
 export interface CrawlOptions {
@@ -39,6 +40,7 @@ export class CrawlerService {
     let context: BrowserContext = null;
     let browser: Browser = null;
     let matchedFiltersCount = 0;
+    let blockedResourcesCount = 0;
     
     try {
       // Launch browser with optimized settings
@@ -73,7 +75,8 @@ export class CrawlerService {
         
         // Handle direct resource type matching
         if (blockableResourceTypes.includes(resourceType)) {
-          this.logger.log(`Blocked ${resourceType}: ${url}`);
+          this.logger.debug(`Blocked ${resourceType}: ${url}`);
+          blockedResourcesCount++;
           return route.abort();
         }
         
@@ -87,7 +90,8 @@ export class CrawlerService {
           
           const guessedType = blockableRequest.guessTypeOfRequest();
           if (blockableResourceTypes.includes(guessedType)) {
-            this.logger.log(`Blocked (guessed ${guessedType}): ${url}`);
+            this.logger.debug(`Blocked (guessed ${guessedType}): ${url}`);
+            blockedResourcesCount++;
             return route.abort();
           }
         }
@@ -117,6 +121,7 @@ export class CrawlerService {
       
       // Add blocked requests count to the result
       result.matchedAdblockFiltersCount = matchedFiltersCount;
+      result.blockedResourcesCount = blockedResourcesCount;
       
       return result;
     } catch (error) {
@@ -165,7 +170,8 @@ export class CrawlerService {
         title, 
         metadata,
         content: await page.content(),
-        matchedAdblockFiltersCount: 0 // Will be updated in the main method
+        matchedAdblockFiltersCount: 0, // Will be updated in the main method
+        blockedResourcesCount: 0 // Will be updated in the main method
       };
     }
     
@@ -173,7 +179,8 @@ export class CrawlerService {
       title, 
       metadata,
       content: undefined, 
-      matchedAdblockFiltersCount: 0 // Will be updated in the main method
+      matchedAdblockFiltersCount: 0, // Will be updated in the main method
+      blockedResourcesCount: 0 // Will be updated in the main method
     };
   }
 } 

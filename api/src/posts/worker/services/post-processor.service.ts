@@ -45,7 +45,7 @@ export class PostProcessorService {
       // Crawl the URL
       this.logger.log(`Starting to crawl URL: ${resourceUrl}`);
       const crawlResult = await this.crawlerService.crawlUrl(resourceUrl, { debugMode });
-      this.logger.log(`Finished crawling URL: ${resourceUrl}. Matched ${crawlResult.matchedAdblockFiltersCount} Adblock filters.`);
+      this.logger.log(`Finished crawling URL: ${resourceUrl}. Matched ${crawlResult.matchedAdblockFiltersCount} Adblock filters and blocked ${crawlResult.blockedResourcesCount} resource requests.`);
       
       // Extract title from crawl result
       const title = crawlResult?.title || '';
