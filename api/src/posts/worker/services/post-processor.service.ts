@@ -45,6 +45,24 @@ export class PostProcessorService {
       // Crawl the URL
       this.logger.log(`Starting to crawl URL: ${resourceUrl}`);
       const crawlResult = await this.crawlerService.crawlUrl(resourceUrl, { debugMode });
+      
+      // Check if crawling was successful
+      if (!crawlResult.success) {
+        this.logger.error(`Failed to crawl URL ${resourceUrl}: ${crawlResult.errorMessage}`);
+        
+        // Update post status to failed and store the error message
+        await this.updatePostWithError(postId, crawlResult.errorMessage);
+        
+        return {
+          success: false,
+          postId,
+          authorId,
+          resourceUrl,
+          crawlResult,
+          error: crawlResult.errorMessage
+        };
+      }
+      
       this.logger.log(`Finished crawling URL: ${resourceUrl}. Matched ${crawlResult.matchedAdblockFiltersCount} Adblock filters and blocked ${crawlResult.blockedResourcesCount} resource requests.`);
       
       // Extract title from crawl result

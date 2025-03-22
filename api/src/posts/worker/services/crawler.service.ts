@@ -32,6 +32,8 @@ export interface CrawlResult {
   content?: string;
   matchedAdblockFiltersCount: number;
   blockedResourcesCount: number;
+  success: boolean;
+  errorMessage?: string;
 }
 
 export interface CrawlOptions {
@@ -45,6 +47,14 @@ const BLOCKABLE_RESOURCE_TYPES = ['image', 'font', 'media', 'stylesheet'];
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_RETRIES = 1;
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+const DEFAULT_METADATA: MetadataResult = {
+  title: '',
+  description: '',
+  image: '',
+  author: '',
+  keywords: '',
+  mainText: ''
+};
 
 @Injectable()
 export class CrawlerService {
@@ -93,6 +103,7 @@ export class CrawlerService {
       // Add blocked requests stats to the result
       result.matchedAdblockFiltersCount = matchedFiltersCount;
       result.blockedResourcesCount = blockedResourcesCount;
+      result.success = true;
       
       return result;
     } catch (error) {
@@ -204,10 +215,16 @@ export class CrawlerService {
    * Navigate to the target URL with optimized settings
    */
   private async navigateToPage(page: Page, url: string, timeout: number): Promise<void> {
-    await page.goto(url, { 
-      waitUntil: 'domcontentloaded', // Faster than 'networkidle'
-      timeout 
-    });
+    try {
+      await page.goto(url, { 
+        waitUntil: 'domcontentloaded', // Faster than 'networkidle'
+        timeout 
+      });
+    } catch (error) {
+      // Log the error but re-throw it to be handled by the main try-catch
+      this.logger.error(`Navigation failed for ${url}: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
@@ -229,7 +246,15 @@ export class CrawlerService {
       });
     }
     
-    throw error;
+    // Return a valid result with error information instead of throwing
+    return {
+      title: `Failed to load: ${url}`,
+      metadata: DEFAULT_METADATA,
+      matchedAdblockFiltersCount: 0,
+      blockedResourcesCount: 0,
+      success: false,
+      errorMessage: error.message
+    };
   }
 
   /**
@@ -303,7 +328,8 @@ export class CrawlerService {
         readability: readabilityResult,
         content: htmlContent,
         matchedAdblockFiltersCount: 0, // Will be updated in the main method
-        blockedResourcesCount: 0 // Will be updated in the main method
+        blockedResourcesCount: 0, // Will be updated in the main method
+        success: true
       };
     }
     
@@ -313,7 +339,8 @@ export class CrawlerService {
       readability: readabilityResult,
       content: undefined, 
       matchedAdblockFiltersCount: 0, // Will be updated in the main method
-      blockedResourcesCount: 0 // Will be updated in the main method
+      blockedResourcesCount: 0, // Will be updated in the main method
+      success: true
     };
   }
 
