@@ -21,6 +21,7 @@ export class AdBlockService implements OnModuleInit {
   private readonly logger = new Logger(AdBlockService.name);
   private blocker: PlaywrightBlocker | null = null;
   private isInitialized = false;
+  private filtersCount = 0;
 
   constructor(
     private readonly httpService: HttpService,
@@ -50,16 +51,32 @@ export class AdBlockService implements OnModuleInit {
       const filterText = await this.getFilterText();
       if (filterText) {
         try {
+          this.logger.log(`Creating blocker with filter text of length: ${filterText.length} bytes`);
+          const lines = filterText.split('\n').length;
+          this.logger.log(`Filter text contains ${lines} lines`);
+          
           this.blocker = await PlaywrightBlocker.parse(filterText);
-          this.logger.log('Adblocker filters loaded successfully');
+          
+          // Count the filters to verify they were loaded
+          const filters = this.blocker.getFilters();
+          this.filtersCount = filters.networkFilters.length + filters.cosmeticFilters.length;
+          this.logger.log(`Adblocker loaded ${this.filtersCount} filters successfully (${filters.networkFilters.length} network, ${filters.cosmeticFilters.length} cosmetic)`);
+          
+          if (this.filtersCount === 0) {
+            this.logger.warn('No filters were loaded - proceeding with empty blocker');
+            this.blocker = PlaywrightBlocker.empty(); // Reset to empty blocker
+            await this.cacheService.clear(CACHE_KEY); // Clear the cache to try again next time
+          }
         } catch (error) {
           this.logger.error(`Failed to create blocker from lists: ${error.message}`);
           // Keep the empty blocker created above
         }
+      } else {
+        this.logger.warn('No filter text was loaded - proceeding with empty blocker');
       }
       
       this.isInitialized = true;
-      this.logger.log('Adblocker initialized successfully');
+      this.logger.log(`Adblocker initialized with ${this.filtersCount} filters`);
     } catch (error) {
       this.logger.error(`Failed to initialize adblocker: ${error.message}`);
       
@@ -78,6 +95,9 @@ export class AdBlockService implements OnModuleInit {
     if (!this.isInitialized) {
       await this.initialize();
     }
+    
+    // Log the number of active filters
+    this.logger.log(`Returning blocker with ${this.filtersCount} filters`);
     return this.blocker;
   }
 
@@ -87,7 +107,7 @@ export class AdBlockService implements OnModuleInit {
   private async getFilterText(): Promise<string> {
     try {
       // Use CacheService to fetch or update the filter text
-      return await this.cacheService.getOrFetch<string>(
+      const result = await this.cacheService.getOrFetch<string>(
         CACHE_KEY,
         () => this.fetchBlocklists(),
         {
@@ -95,6 +115,9 @@ export class AdBlockService implements OnModuleInit {
           subDirectory: 'adblock'
         }
       );
+      
+      this.logger.log(`Retrieved filter text: ${result ? 'yes' : 'no'}, length: ${result?.length || 0} bytes`);
+      return result;
     } catch (error) {
       this.logger.error(`Failed to get filter text: ${error.message}`);
       return ''; // Return empty string on error
@@ -115,8 +138,10 @@ export class AdBlockService implements OnModuleInit {
             const response = await firstValueFrom(this.httpService.get(url, {
               headers: {
                 'User-Agent': USER_AGENT
-              }
+              },
+              timeout: 10000 // 10 second timeout
             }));
+            this.logger.log(`Successfully fetched ${url}, size: ${response.data?.length || 0} bytes`);
             return response.data;
           } catch (error) {
             this.logger.warn(`Failed to fetch blocklist from ${url}: ${error.message}`);
@@ -127,14 +152,16 @@ export class AdBlockService implements OnModuleInit {
       
       // Filter out empty responses and combine all blocklists
       const validBlocklists = blocklists.filter(list => !!list);
-      const blocklist = validBlocklists.join('\n');
+      const combinedBlocklist = validBlocklists.join('\n');
       
-      if (!blocklist) {
+      this.logger.log(`Combined ${validBlocklists.length} blocklists with total size: ${combinedBlocklist.length} bytes`);
+      
+      if (!combinedBlocklist) {
         throw new Error('No valid blocklists were fetched');
       }
       
-      this.logger.log('Blocklists fetched successfully');
-      return blocklist;
+      this.logger.log('Blocklists fetched and combined successfully');
+      return combinedBlocklist;
     } catch (error) {
       this.logger.error(`Failed to fetch blocklists: ${error.message}`);
       throw error;

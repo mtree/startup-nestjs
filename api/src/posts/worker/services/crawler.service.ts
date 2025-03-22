@@ -80,18 +80,22 @@ export class CrawlerService {
     
     let context: BrowserContext = null;
     let browser: Browser = null;
-    let matchedFiltersCount = 0;
-    let blockedResourcesCount = 0;
+    
+    // Use an object to track counters so they're passed by reference
+    const counters = {
+      matchedFiltersCount: 0,
+      blockedResourcesCount: 0
+    };
     
     try {
       // Setup browser and page
-      ({ browser, context, matchedFiltersCount, blockedResourcesCount } = 
-        await this.setupBrowserAndPage(url, timeout, debugMode, matchedFiltersCount, blockedResourcesCount));
+      ({ browser, context } = 
+        await this.setupBrowserAndPage(url, timeout, debugMode));
       
       const page = await context.newPage();
       
       // Set up adblocking and resource filtering
-      await this.setupAdblocking(page, blockedResourcesCount, matchedFiltersCount);
+      await this.setupAdblocking(page, counters);
       
       // Configure navigation timeouts
       this.configureTimeouts(page, timeout);
@@ -103,13 +107,23 @@ export class CrawlerService {
       const result = await this.extractPageData(page, debugMode);
       
       // Add blocked requests stats to the result
-      result.matchedAdblockFiltersCount = matchedFiltersCount;
-      result.blockedResourcesCount = blockedResourcesCount;
+      result.matchedAdblockFiltersCount = counters.matchedFiltersCount;
+      result.blockedResourcesCount = counters.blockedResourcesCount;
       result.success = true;
+      
+      // Log counter values
+      this.logger.log(`Crawl completed for ${url}. Filter matches: ${counters.matchedFiltersCount}, Blocked resources: ${counters.blockedResourcesCount}`);
       
       return result;
     } catch (error) {
-      return this.handleCrawlError(error, url, options);
+      // Even for errors, we want to include any counter data we collected
+      const errorResult = await this.handleCrawlError(error, url, options);
+      
+      // Add counter data to the error result too
+      errorResult.matchedAdblockFiltersCount = counters.matchedFiltersCount;
+      errorResult.blockedResourcesCount = counters.blockedResourcesCount;
+      
+      return errorResult;
     } finally {
       // Clean up resources
       await this.cleanupBrowserResources(browser, context);
@@ -122,14 +136,10 @@ export class CrawlerService {
   private async setupBrowserAndPage(
     url: string, 
     timeout: number, 
-    debugMode: boolean,
-    matchedFiltersCount: number,
-    blockedResourcesCount: number
+    debugMode: boolean
   ): Promise<{ 
     browser: Browser; 
-    context: BrowserContext; 
-    matchedFiltersCount: number;
-    blockedResourcesCount: number;
+    context: BrowserContext;
   }> {
     // Launch browser with optimized settings
     const browser = await chromium.launch({ 
@@ -149,9 +159,7 @@ export class CrawlerService {
 
     return { 
       browser, 
-      context, 
-      matchedFiltersCount, 
-      blockedResourcesCount 
+      context
     };
   }
 
@@ -159,49 +167,67 @@ export class CrawlerService {
    * Configure adblocking and resource filtering for the page
    */
   private async setupAdblocking(
-    page: Page, 
-    blockedResourcesCount: number,
-    matchedFiltersCount: number
+    page: Page,
+    counters: { matchedFiltersCount: number, blockedResourcesCount: number }
   ): Promise<void> {
     // Apply adblocking
     const blocker = await this.adBlockService.getBlocker();
+    
+    // Enable blocking in page
+    this.logger.log(`Setting up adblocking for page - blocker available: ${!!blocker}`);
     await blocker.enableBlockingInPage(page);
+    
+    this.logger.log(`Adblocking initialized. Blocking resource types: ${BLOCKABLE_RESOURCE_TYPES.join(', ')}`);
 
     // Apply resource blocking
+    let routeCounter = 0;
     await page.route('**/*', async (route) => {
+      routeCounter++;
       const url = route.request().url();
       const resourceType = route.request().resourceType();
       
       // Handle direct resource type matching
       if (BLOCKABLE_RESOURCE_TYPES.includes(resourceType)) {
-        this.logger.debug(`Blocked ${resourceType}: ${url}`);
-        blockedResourcesCount++;
+        this.logger.debug(`[${routeCounter}] Blocked ${resourceType}: ${url.substring(0, 100)}`);
+        counters.blockedResourcesCount++;
         return route.abort();
       }
       
       // Handle ambiguous 'other' resource types
       if (resourceType === 'other') {
-        const blockableRequest = Request.fromRawDetails({
-          url,
-          type: 'other',
-          sourceUrl: page.url(),
-        });
-        
-        const guessedType = blockableRequest.guessTypeOfRequest();
-        if (BLOCKABLE_RESOURCE_TYPES.includes(guessedType)) {
-          this.logger.debug(`Blocked (guessed ${guessedType}): ${url}`);
-          blockedResourcesCount++;
-          return route.abort();
+        try {
+          const blockableRequest = Request.fromRawDetails({
+            url,
+            type: 'other',
+            sourceUrl: page.url(),
+          });
+          
+          const guessedType = blockableRequest.guessTypeOfRequest();
+          if (BLOCKABLE_RESOURCE_TYPES.includes(guessedType)) {
+            this.logger.log(`[${routeCounter}] Blocked (guessed ${guessedType}): ${url.substring(0, 100)}`);
+            counters.blockedResourcesCount++;
+            return route.abort();
+          }
+        } catch (error) {
+          this.logger.debug(`Error guessing resource type: ${error.message}`);
         }
       }
+      
+      // Log allowed resources for debugging
+      this.logger.debug(`[${routeCounter}] Allowed ${resourceType}: ${url.substring(0, 100)}`);
       
       // Allow all other resources
       return route.continue();
     });
 
-    // Track blocked requests
-    blocker.on('filter-matched', () => {
-      matchedFiltersCount++;
+    // Track blocked requests with detailed logging
+    let matchCounter = 0;
+    blocker.on('filter-matched', (matchInfo) => {
+      matchCounter++;
+      counters.matchedFiltersCount++;
+      // Log details about matched filter - type is specific to @ghostery/adblocker
+      const filterText = matchInfo?.filter?.toString() || 'unknown';
+      this.logger.debug(`[${matchCounter}] Adblock filter matched: ${filterText}`);
     });
   }
 
@@ -298,6 +324,9 @@ export class CrawlerService {
    * Extract metadata and content from the page
    */
   private async extractPageData(page: Page, debugMode: boolean): Promise<CrawlResult> {
+    // Add a small delay to ensure all resources are properly counted
+    await page.waitForTimeout(500);
+    
     const title = await page.title();
     const htmlContent = await page.content();
     
