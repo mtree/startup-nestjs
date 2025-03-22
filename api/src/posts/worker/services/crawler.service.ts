@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Browser, BrowserContext, chromium, Page } from 'playwright';
 import { AdBlockService } from './adblock-service';
+import { Request } from '@ghostery/adblocker';
 
 export interface CrawlResult {
   title: string;
@@ -53,33 +54,58 @@ export class CrawlerService {
         bypassCSP: true, // Bypass Content-Security-Policy to ensure page loads
         javaScriptEnabled: true,
         ignoreHTTPSErrors: true,
+        serviceWorkers: 'block',
       });
-      
+
       // Create a new page
       const page = await context.newPage();
       
-      // Block unnecessary resource types for better performance
-      await context.route('**/*.{png,jpg,jpeg,gif,webp,svg,mp4,webm,ogg,mp3,wav,pdf,doc,docx,xls,xlsx,woff,woff2,ttf,otf,eot,css}', 
-        route => {
-          this.logger.log(`🚫 BLOCKED`);
-          return route.abort('blockedbyclient');
-        }
-      );
-      
+
       // Apply adblocking
       const blocker = await this.adBlockService.getBlocker();
       await blocker.enableBlockingInPage(page);
-      
+
+      // Apply resource blocking
+      await page.route('**/*', async (route) => {
+        const url = route.request().url();
+        const resourceType = route.request().resourceType();
+        const blockableResourceTypes = ['image', 'font', 'media', 'stylesheet'];
+        
+        // Handle direct resource type matching
+        if (blockableResourceTypes.includes(resourceType)) {
+          this.logger.log(`Blocked ${resourceType}: ${url}`);
+          return route.abort();
+        }
+        
+        // Handle ambiguous 'other' resource types
+        if (resourceType === 'other') {
+          const blockableRequest = Request.fromRawDetails({
+            url,
+            type: 'other',
+            sourceUrl: page.url(),
+          });
+          
+          const guessedType = blockableRequest.guessTypeOfRequest();
+          if (blockableResourceTypes.includes(guessedType)) {
+            this.logger.log(`Blocked (guessed ${guessedType}): ${url}`);
+            return route.abort();
+          }
+        }
+        
+        // Allow all other resources
+        return route.continue();
+      });
+
       // Track blocked requests
       blocker.on('filter-matched', (request) => {
         matchedFiltersCount++;
-        
+
       });
-      
+
       // Set timeouts and optimized navigation settings
       page.setDefaultTimeout(timeout);
       page.setDefaultNavigationTimeout(timeout);
-      
+
       // Navigate with optimized settings
       await page.goto(url, { 
         waitUntil: 'domcontentloaded', // Faster than 'networkidle'
